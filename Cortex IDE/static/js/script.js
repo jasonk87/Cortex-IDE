@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const terminalOutput = document.getElementById('terminal-output');
     const saveFileBtn = document.getElementById('save-file-btn');
     const runCodeBtn = document.getElementById('run-code-btn');
+    const installDepsBtn = document.getElementById('install-deps-btn');
     let currentPath = null;
     let isAgentRunning = false;
     let codeRunnerState = 'idle'; // New: Manages the Run/Stop/Clear button state
@@ -551,6 +552,31 @@ document.addEventListener('DOMContentLoaded', () => {
             currentStreamEntry = null;
             setAgentRunningState(false);
         });
+
+        socket.on('packages_installed', (data) => {
+            const body = createLogEntry('Packages installed via background process.', 'success', true, false);
+            const pre = document.createElement('pre');
+            pre.textContent = (data.stdout || '') + '\n' + (data.stderr || '');
+            body.appendChild(pre);
+        });
+
+        socket.on('installation_failed', (data) => {
+            const body = createLogEntry(`Package installation failed via background process: ${data.message}`, 'error', true, false);
+            if (data.stdout || data.stderr || data.exit_code !== undefined) { // Check if there's anything to show
+                const pre = document.createElement('pre');
+                let content = '';
+                if (data.exit_code !== undefined) content += `Exit Code: ${data.exit_code}\n`;
+                if (data.stdout) content += `Stdout: ${data.stdout}\n`;
+                if (data.stderr) content += `Stderr: ${data.stderr}`;
+                pre.textContent = content.trim(); // Trim to remove trailing newline if stderr is empty
+                body.appendChild(pre);
+            }
+        });
+
+        socket.on('debug_message', (data) => {
+            console.log('[Socket DEBUG]', data.message, data.stdout || '', data.stderr || '');
+            // createLogEntry(`DEBUG: ${data.message}`, 'info', true, true); // Optional UI logging
+        });
     }
 
     projectForm.addEventListener('submit', async (e) => {
@@ -650,4 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadProjectBtn.addEventListener('click', () => {
         window.location.href = '/api/download_project';
     });
+
+    installDepsBtn.addEventListener('click', installDependencies);
 });

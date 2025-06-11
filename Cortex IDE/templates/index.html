@@ -43,6 +43,7 @@
                     <input id="new-folder-input" type="text" placeholder="new-folder" required autocomplete="off">
                     <button type="submit">Create Folder</button>
                 </form>
+                <button id="install-deps-btn" class="action-button" title="Install packages from requirements.txt">Install Dependencies</button>
                 <div class="panel-content">
                     <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
                 </div>
@@ -70,5 +71,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/package_installer.js') }}"></script>
 </body>
 </html>

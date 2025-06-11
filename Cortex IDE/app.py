@@ -10,8 +10,10 @@ from werkzeug.utils import secure_filename
 from agent import Agent
 from tools import get_safe_path
 from pathlib import Path
+from .package_manager import package_manager_bp
 
 app = Flask(__name__)
+app.register_blueprint(package_manager_bp)
 app.config['SECRET_KEY'] = 'a-very-secret-key-for-production!'
 socketio = SocketIO(
     app,
