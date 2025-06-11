@@ -9,10 +9,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.css"> <!-- New -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.js"></script> <!-- New -->
 </head>
 <body>
     <h1>Cortex IDE</h1>
@@ -61,6 +63,7 @@
                 <div>
                     <button id="run-code-btn">Run</button>
                     <button id="save-file-btn">Save</button>
+                        <button id="format-code-btn" title="Format Python code using Black">Format</button>
                 </div>
             </div>
             <div class="panel-content editor-container">
@@ -72,5 +75,7 @@
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script src="{{ url_for('static', filename='js/package_installer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/python_linter_addon.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/code_formatter_addon.js') }}"></script>
 </body>
 </html>

@@ -177,3 +177,150 @@ def test_install_packages_pip_command_not_found(mock_subprocess_run, client, pro
 # To run these tests, you would typically use `pytest` in your terminal
 # in the root directory of the "Cortex IDE" project.
 # Ensure pytest and Flask are installed in your environment.
+
+# (Existing imports and fixtures are assumed to be above this point)
+# ...
+
+@patch('subprocess.run')
+def test_lint_code_success_with_issues(mock_subprocess_run, client, project):
+    """Test successful linting with issues found."""
+    python_code = "import os\ndef my_func():\n  print(os)\n" # Example with unused import + spacing for flake8
+
+    # Mock pip install flake8
+    mock_pip_flake8 = MagicMock()
+    mock_pip_flake8.returncode = 0
+    mock_pip_flake8.stdout = "flake8 installed"
+    mock_pip_flake8.stderr = ""
+
+    # Mock flake8 execution
+    mock_flake8_result = MagicMock()
+    mock_flake8_result.returncode = 1 # Flake8 exits 1 if issues found
+    # Example output: "row,col,code,text"
+    mock_flake8_result.stdout = "1,1,F401,'os' imported but unused\n2,1,E302,expected 2 blank lines, found 0"
+    mock_flake8_result.stderr = ""
+
+    mock_subprocess_run.side_effect = [
+        mock_pip_flake8,  # Call for pip install flake8
+        mock_flake8_result # Call for flake8 command
+    ]
+
+    with client.session_transaction() as sess:
+        sess['project_path'] = project # Linting might use project_path for temp file creation
+
+    response = client.post('/api/lint_code', json={'code': python_code})
+
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data["success"] is True
+    assert len(data["issues"]) == 2
+    assert data["issues"][0]["line"] == 1
+    assert data["issues"][0]["col"] == 1
+    assert data["issues"][0]["code"] == "F401"
+    assert "'os' imported but unused" in data["issues"][0]["message"]
+    assert data["issues"][1]["line"] == 2
+    assert data["issues"][1]["code"] == "E302"
+
+    # Check subprocess calls
+    assert mock_subprocess_run.call_count == 2
+    pip_call_args = mock_subprocess_run.call_args_list[0][0][0]
+    assert "pip" in pip_call_args[1] and "install" in pip_call_args and "flake8" in pip_call_args
+    flake8_call_args = mock_subprocess_run.call_args_list[1][0][0]
+    assert "flake8" in flake8_call_args[1] # python -m flake8 ...
+
+@patch('subprocess.run')
+def test_lint_code_success_no_issues(mock_subprocess_run, client, project):
+    """Test successful linting with no issues found."""
+    python_code = "def my_func():\n    pass\n"
+
+    mock_pip_flake8 = MagicMock(returncode=0)
+    mock_flake8_result = MagicMock(returncode=0, stdout="", stderr="") # Flake8 exits 0 if no issues
+
+    mock_subprocess_run.side_effect = [mock_pip_flake8, mock_flake8_result]
+
+    with client.session_transaction() as sess:
+        sess['project_path'] = project
+
+    response = client.post('/api/lint_code', json={'code': python_code})
+
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data["success"] is True
+    assert len(data["issues"]) == 0
+    assert mock_subprocess_run.call_count == 2
+
+def test_lint_code_no_code_provided(client, project):
+    """Test lint_code when no code is provided in the request."""
+    with client.session_transaction() as sess:
+        sess['project_path'] = project
+    response = client.post('/api/lint_code', json={})
+    assert response.status_code == 400 # Bad Request
+    data = json.loads(response.data)
+    assert data["success"] is False
+    assert "No code provided" in data["error"]
+
+@patch('subprocess.run')
+@patch('Cortex_IDE.package_manager.Path.read_text') # Patching where Path(...).read_text() is used
+def test_format_code_success(mock_path_read_text, mock_subprocess_run, client, project):
+    """Test successful code formatting with Black."""
+    unformatted_code = "def foo():\n  print('hello world')"
+    formatted_code_by_black = "def foo():\n    print(\"hello world\")\n"
+
+    mock_pip_black = MagicMock(returncode=0, stdout="black installed", stderr="")
+    mock_black_result = MagicMock(returncode=0, stdout="", stderr="") # Black modifies file in place
+
+    mock_subprocess_run.side_effect = [mock_pip_black, mock_black_result]
+
+    # When the endpoint tries to read the (theoretically) formatted temp file,
+    # make our mock_path_read_text return the desired formatted code.
+    mock_path_read_text.return_value = formatted_code_by_black
+
+    with client.session_transaction() as sess:
+        sess['project_path'] = project
+
+    response = client.post('/api/format_code', json={'code': unformatted_code})
+
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data["success"] is True
+    assert data["formatted_code"] == formatted_code_by_black
+
+    assert mock_subprocess_run.call_count == 2
+    pip_call_args = mock_subprocess_run.call_args_list[0][0][0]
+    assert "pip" in pip_call_args[1] and "install" in pip_call_args and "black" in pip_call_args
+    black_call_args = mock_subprocess_run.call_args_list[1][0][0]
+    assert "black" in black_call_args[1]
+    mock_path_read_text.assert_called_once() # Verify the file was attempted to be read
+
+@patch('subprocess.run')
+def test_format_code_black_fails_to_parse(mock_subprocess_run, client, project):
+    """Test code formatting when Black fails (e.g., parsing error)."""
+    invalid_python_code = "def foo():\n print('hello world" # Syntax error
+
+    mock_pip_black = MagicMock(returncode=0)
+    mock_black_error_result = MagicMock(returncode=123, stdout="", stderr="Error: Cannot parse source file.")
+
+    mock_subprocess_run.side_effect = [mock_pip_black, mock_black_error_result]
+
+    with client.session_transaction() as sess:
+        sess['project_path'] = project
+
+    response = client.post('/api/format_code', json={'code': invalid_python_code})
+
+    assert response.status_code == 500
+    data = json.loads(response.data)
+    assert data["success"] is False
+    assert "Black formatting failed" in data["error"]
+    assert "Error: Cannot parse source file." in data.get("details", "")
+    assert mock_subprocess_run.call_count == 2
+
+def test_format_code_no_code_provided(client, project):
+    """Test format_code when no code is provided."""
+    with client.session_transaction() as sess:
+        sess['project_path'] = project
+    response = client.post('/api/format_code', json={})
+    assert response.status_code == 400
+    data = json.loads(response.data)
+    assert data["success"] is False
+    assert "No code provided" in data["error"]
+
+# (Ensure these tests are appended to the existing test_package_manager.py file)

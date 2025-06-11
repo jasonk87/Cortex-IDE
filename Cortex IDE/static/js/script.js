@@ -24,12 +24,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveFileBtn = document.getElementById('save-file-btn');
     const runCodeBtn = document.getElementById('run-code-btn');
     const installDepsBtn = document.getElementById('install-deps-btn');
+    const formatCodeBtn = document.getElementById('format-code-btn');
     let currentPath = null;
     let isAgentRunning = false;
     let codeRunnerState = 'idle'; // New: Manages the Run/Stop/Clear button state
     
     const codeMirrorEditor = CodeMirror.fromTextArea(editorTextarea, {
-        lineNumbers: true, theme: "dracula", indentUnit: 4
+        lineNumbers: true,
+        theme: "dracula",
+        indentUnit: 4,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-lint-markers"],
+        lint: { async: true, getAnnotations: pythonLinter, delay: 750 } // Use the globally defined pythonLinter
     });
     
     const modeMap = { 'py': 'python', 'js': 'javascript', 'css': 'css', 'html': 'xml' };
@@ -678,4 +683,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     installDepsBtn.addEventListener('click', installDependencies);
+    formatCodeBtn.addEventListener('click', formatCode);
 });

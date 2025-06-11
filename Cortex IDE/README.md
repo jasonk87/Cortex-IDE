@@ -11,6 +11,8 @@ Cortex IDE is a web-based development environment for Python projects. It allows
 *   **Agent Interaction**: Chat with an AI agent to help with coding tasks.
 *   **Download Project**: Download the entire project as a .zip file.
 *   **Dependency Management**: Manage Python package dependencies for your projects.
+*   **Code Linting**: Automatic linting for Python files using Flake8 to help identify errors and style issues.
+*   **Code Formatting**: Format Python code using Black with a dedicated "Format" button.
 
 ## Getting Started
 
@@ -45,6 +47,24 @@ Cortex IDE supports managing Python package dependencies using a `requirements.t
 
 3.  **Using Installed Packages**:
     *   After successful installation, you can import and use the installed packages in your Python scripts within the project.
+
+## Code Linting
+
+Cortex IDE provides automatic code linting for Python files using Flake8. This helps you identify potential errors, style issues, and anti-patterns in your code as you type.
+
+*   **How it Works**: When you are editing a Python file, linting suggestions will automatically appear in the editor. Issues are typically indicated by markers in the gutter and underlining of the relevant code. Hovering over these markers or underlined code may provide more details about the issue.
+*   **Underlying Tool**: Linting is performed by Flake8. The IDE calls a backend service that runs Flake8 on your code.
+*   **Benefits**: Helps improve code quality, catch errors early, and maintain consistent style.
+
+## Code Formatting
+
+You can automatically format your Python code using Black, a popular opinionated code formatter.
+
+1.  **Open a Python File**: Ensure the Python file you want to format is open in the editor.
+2.  **Click the "Format" Button**: Locate the "Format" button in the file viewer panel (typically next to the "Save" and "Run" buttons).
+3.  **Automatic Formatting**: Clicking this button will send your code to a backend service that uses Black to reformat it. The code in your editor will then be updated with the Black-formatted version.
+4.  **Save Changes**: Remember to save the file if you are happy with the formatted code.
+*   **Note**: If you click "Format" for a non-Python file, a warning will appear in the logs, and no formatting action will be taken.
 
 ## Agent Interaction
 
