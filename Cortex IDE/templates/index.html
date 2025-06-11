@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex IDE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+</head>
+<body>
+    <h1>Cortex IDE</h1>
+
+    <form id="project-form" class="input-form">
+        <input type="text" id="project-name-input" placeholder="Enter new project name..." required autocomplete="off">
+        <button type="submit">Start New Project</button>
+    </form>
+    
+    <form id="chat-form" class="input-form" style="display: none;">
+        <input type="text" id="chat-input" placeholder="Send a message to the agent..." required autocomplete="off">
+        <button type="submit" id="chat-send-btn">Send</button>
+    </form>
+
+    <div id="app-container">
+        <div id="file-tree-panel" class="panel">
+            <div id="file-tree-panel" class="panel">
+                <div class="panel-header">
+                    <span>Project Files</span>
+                    <button id="download-project-btn" title="Download Project as .zip" style="display: none;">↓</button>
+                </div>
+                <form id="create-file-form">
+                    <input id="new-filename-input" type="text" placeholder="new-file.py" required autocomplete="off">
+                    <button type="submit">Create File</button>
+                </form>
+                <!-- ADD THE FORM BELOW -->
+                <form id="create-folder-form">
+                    <input id="new-folder-input" type="text" placeholder="new-folder" required autocomplete="off">
+                    <button type="submit">Create Folder</button>
+                </form>
+                <div class="panel-content">
+                    <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
+                </div>
+            </div>
+        </div>
+        <div id="main-panel" class="panel">
+            <div class="panel-header">Agent Logs</div>
+            <div class="panel-content" id="log-content">
+                Welcome! Enter a project name above to begin.
+            </div>
+        </div>
+        <div id="file-viewer-panel" class="panel">
+            <div class="panel-header">
+                <span id="file-viewer-header">File Viewer</span>
+                <div>
+                    <button id="run-code-btn">Run</button>
+                    <button id="save-file-btn">Save</button>
+                </div>
+            </div>
+            <div class="panel-content editor-container">
+                <textarea id="editor-textarea" spellcheck="false"></textarea>
+                <pre id="terminal-output" class="terminal-output" style="display: none;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

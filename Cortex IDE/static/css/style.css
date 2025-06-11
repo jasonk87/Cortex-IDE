@@ -1,0 +1,575 @@
+/* static/css/style.css */
+
+:root {
+    --bg-dark:    #1d1f21;
+    --bg-panel:   #282c34;
+    --text-main:  #c5c8c6;
+    --text-light: #d6deeb;
+    --border:     #3a3f4b;
+    --purple:     #c792ea;
+    --cyan:       #89ddff;
+    --green:      #c3e88d;
+    --red:        #ff5370;
+    --orange:     #f78c6c;
+    --blue:       #82aaff;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+h1 {
+    text-align: center;
+    color: var(--text-light);
+    margin: 10px 0;
+    font-weight: 400;
+}
+
+.input-form {
+    display: flex;
+    padding: 0 20px 15px 20px;
+}
+
+.input-form input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    border-radius: 4px 0 0 4px;
+    font-size: 16px;
+}
+
+.input-form button {
+    padding: 10px 20px;
+    border: none;
+    background-color: var(--purple);
+    color: #fff;
+    cursor: pointer;
+    border-radius: 0 4px 4px 0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#task-form button {
+    background-color: var(--cyan);
+    color: var(--bg-dark);
+}
+
+#app-container {
+    display: flex;
+    flex-grow: 1;
+    gap: 15px;
+    min-height: 0;
+    padding: 0 20px 20px 20px;
+}
+
+.panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+#file-tree-panel { flex: 0 0 250px; }
+#main-panel { flex: 1 1 50%; min-width: 0; }
+#file-viewer-panel { flex: 1 1 50%; display: flex; flex-direction: column; }
+
+.panel-header {
+    padding: 10px 15px;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-content {
+    padding: 15px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+#file-tree-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#file-tree-list li a {
+    display: block;
+    padding: 8px 10px;
+    text-decoration: none;
+    color: var(--text-main);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#file-tree-list li a:hover,
+#file-tree-list li.active > a { /* Target the <a> inside an active <li> */
+    background-color: rgba(199, 146, 234, 0.2);
+}
+
+#editor-textarea {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    resize: none;
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    border: none;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.panel-content.editor-container {
+    position: relative; /* Needed for absolute positioning of children */
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header button {
+    color: var(--bg-dark);
+    padding: 5px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+#save-file-btn { background-color: var(--green); }
+#run-code-btn { background-color: var(--blue); }
+
+#create-file-form {
+    display: flex;
+    padding: 0 15px 15px;
+    margin-top:20px;
+}
+
+#create-file-form input {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 6px;
+    font-size: 12px;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 3px 0 0 3px;
+}
+
+#create-file-form button {
+    padding: 6px 10px;
+    font-size: 12px;
+    background-color: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 0 3px 3px 0;
+    cursor: pointer;
+}
+
+.log-output, .action-proposal {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+    font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.log-output-header, .action-proposal-header {
+    font-weight: bold;
+    color: var(--cyan);
+}
+.log-output-stderr { color: var(--red); }
+.agent-log-msg { color: var(--base00); font-style: italic; }
+.stream-container, .terminal-output {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#main-panel .panel-content { /* Target the log panel's content area specifically */
+    overflow-y: auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column; /* This is the key for top-to-bottom layout */
+}
+
+.terminal-output { padding: 15px; padding-top: 0; }
+
+.CodeMirror {
+    height: 100%;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: "SF Mono", "Fira Code", monospace;
+    flex-grow: 1;
+}
+
+/* --- UX/UI Enhancements --- */
+
+/* Add position: relative to the form to act as a container */
+.input-form {
+    position: relative;
+}
+
+/* Style for the 'Stop' button state */
+.btn-stop {
+    background-color: var(--red) !important;
+    color: white !important;
+}
+
+/* Gray out the input field when the agent is running */
+.input-form.running input {
+    background-color: #3a3f4b;
+}
+
+/* Create a pseudo-element for the animated glow.
+  This element is positioned precisely over the input/button combo,
+  ignoring the parent's padding for a tight, clean look.
+*/
+.input-form.running::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    /* Inset the pseudo-element to match the form's padding */
+    left: 20px;
+    right: 20px;
+    /* Adjust bottom to account for the input/button height and bottom padding */
+    bottom: 15px; 
+    border-radius: 4px;
+    pointer-events: none; /* The overlay should not be clickable */
+    animation: running-glow 2s infinite;
+}
+
+/* Keyframe animation for the glowing border/shadow effect */
+@keyframes running-glow {
+    0% {
+        box-shadow: 0 0 3px var(--cyan);
+    }
+    50% {
+        box-shadow: 0 0 10px var(--cyan), 0 0 12px var(--cyan);
+    }
+    100% {
+        box-shadow: 0 0 3px var(--cyan);
+    }
+}
+
+.btn-clear {
+    background-color: var(--green) !important;
+    color: var(--bg-dark) !important;
+}
+
+/* Ensure terminal takes up the full space of its container */
+.panel-content .terminal-output {
+    height: 100%;
+    box-sizing: border-box;
+    flex-grow: 1;
+}
+
+/* --- Delete File UI --- */
+
+/* Make file list items a container for positioning the delete button */
+#file-tree-list li {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Style the file link to not overlap the button */
+#file-tree-list li a {
+    flex-grow: 1;
+}
+
+/* Style for the new delete button */
+.delete-file-btn {
+    display: none; /* Hidden by default */
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+/* Show the delete button when hovering over the list item */
+#file-tree-list li:hover .delete-file-btn {
+    display: block;
+}
+
+/* Make the delete button red on its own hover */
+.delete-file-btn:hover {
+    background-color: var(--red);
+    color: white;
+}
+
+/* --- Hierarchical File Tree Styles (Corrected) --- */
+
+/* 1. Remove all padding/margin from ULs. They are just structural containers now. */
+#file-tree-list ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin-left: 0;
+    width: 100%;
+}
+
+/* 2. Use a border and margin to create visual indentation for nested lists */
+#file-tree-list ul ul {
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+}
+
+/* 3. Define the main layout for ALL list items (files and folders) */
+#file-tree-list li {
+    display: flex; /* Use Flexbox for robust alignment */
+    align-items: center;
+    padding: 2px 0; /* Add a little vertical breathing room */
+}
+
+/* 4. Style the clickable names for both files and directories */
+#file-tree-list li > a,
+#file-tree-list li > .directory-name {
+    flex-grow: 1; /* This is KEY: makes the name take all available space */
+    padding: 4px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#file-tree-list li > a {
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+#file-tree-list li > .directory-name {
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--cyan);
+    position: relative;
+    padding-left: 18px; /* Make space for the icon */
+}
+
+/* 5. Style the expand/collapse icon for directories */
+.directory > .directory-name::before {
+    content: '▸'; /* Collapsed icon */
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.1s ease-in-out;
+}
+
+.directory.expanded > .directory-name::before {
+    transform: translateY(-50%) rotate(90deg); /* Expanded icon */
+}
+
+/* 6. Fix the delete buttons. They are now flex items. */
+.delete-file-btn,
+.delete-folder-btn {
+    display: none; /* Hide by default */
+    background: none;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+    flex-shrink: 0; /* Prevent the button from shrinking */
+    margin-left: 5px; /* Space between name and button */
+}
+
+/* 7. Show the buttons on hover of the entire list item */
+#file-tree-list li:hover > .delete-file-btn,
+#file-tree-list li:hover > .delete-folder-btn {
+    display: block;
+}
+
+.delete-file-btn:hover,
+.delete-folder-btn:hover {
+    background-color: var(--red);
+    color: white;
+}
+
+/* 8. Style for the active file */
+#file-tree-list li.active > a {
+    background-color: rgba(199, 146, 234, 0.2);
+}
+
+/* Style for new folder form */
+#create-folder-form {
+    display: flex;
+    padding: 0 15px 15px;
+    margin-top: -5px; /* Reduce space between the two forms */
+}
+
+#create-folder-form input {
+    flex-grow: 1; min-width: 0; padding: 6px; font-size: 12px;
+    background-color: var(--bg-dark); color: var(--text-main);
+    border: 1px solid var(--border); border-radius: 3px 0 0 3px;
+}
+
+#create-folder-form button {
+    padding: 6px 10px; font-size: 12px; background-color: var(--cyan);
+    color: var(--bg-dark); border: none; border-radius: 0 3px 3px 0;
+    cursor: pointer; font-weight: bold;
+}
+
+/* Position delete button on directories */
+.directory {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap; /* Allows children UL to wrap to next line */
+}
+
+.directory > .directory-name {
+    flex-grow: 1; /* Allows name to take up space */
+}
+
+.delete-folder-btn {
+    display: none; /* Hidden by default */
+    background: none; border: none; color: var(--text-main);
+    cursor: pointer; font-size: 16px; padding: 0 8px;
+    border-radius: 3px; font-weight: bold;
+    margin-left: auto; /* Pushes button to the right */
+}
+
+li.directory:hover > .delete-folder-btn {
+    display: block;
+}
+
+.delete-folder-btn:hover {
+    background-color: var(--red);
+    color: white;
+}
+
+/* --- Agent Plan Styles --- */
+.plan-container {
+    background-color: rgba(137, 221, 255, 0.1); /* Light cyan background */
+    border-left: 3px solid var(--cyan);
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+
+.plan-container h4 {
+    margin: 0 0 10px 0;
+    color: var(--cyan);
+    font-weight: bold;
+}
+
+.plan-container ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.plan-container li {
+    padding-bottom: 5px;
+}
+
+/* --- NEW: Professional Log Entry Styles --- */
+.log-entry {
+    border-bottom: 1px solid var(--border);
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 13px;
+}
+
+.log-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
+    cursor: default;
+}
+
+.log-header.collapsible {
+    cursor: pointer;
+}
+.log-header.collapsible:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.log-caret {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    text-align: center;
+}
+
+.log-header.collapsible .log-caret::before {
+    content: '▸';
+    display: inline-block;
+    transition: transform 0.1s ease-in-out;
+}
+
+.log-entry.expanded > .log-header .log-caret::before {
+    transform: rotate(90deg);
+}
+
+.log-body {
+    display: none; /* Collapsed by default */
+    padding: 0 15px 10px 39px; /* Align with title text */
+    background-color: rgba(0,0,0,0.2);
+    border-top: 1px solid var(--border);
+}
+
+.log-entry.expanded > .log-body {
+    display: block;
+}
+
+.log-body pre {
+    margin: 0;
+    padding: 10px;
+    background-color: var(--bg-dark);
+    border-radius: 4px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    word-break: normal;
+    font-size: 12px;
+}
+
+/* --- Entry Type Specific Styles --- */
+.log-entry.type-plan .log-title { color: var(--purple); font-weight: bold; }
+.log-entry.type-thought .log-title { color: var(--orange); font-style: italic; }
+.log-entry.type-action .log-title { color: var(--cyan); }
+.log-entry.type-success .log-title { color: var(--green); }
+.log-entry.type-error .log-title { color: var(--red); }
+
+.log-entry.type-plan .log-body ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+#download-project-btn {
+    background-color: var(--green);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: auto; /* Pushes it to the right */
+}
+
+#download-project-btn:hover {
+    opacity: 0.8;
+}

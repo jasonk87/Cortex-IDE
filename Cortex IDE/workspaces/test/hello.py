@@ -1,0 +1,3 @@
+print("HELLO WORLD!!! 🚀💥🔥 This is the MOST ABSURD Hello World EVER!!! 🤡")
+print("WELCOME TO THE REALM OF UNCONTROLLABLE CHAOS! 🌪️🌪️🌪️")
+print("ENJOY THE MELTDOWN OF EXISTENCE! 🌌🤯")
