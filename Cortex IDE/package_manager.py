@@ -124,16 +124,25 @@ def lint_code():
     socketio = current_app.extensions.get('socketio')
 
     try:
-        # Ensure Flake8 is installed
-        pip_install_flake8 = subprocess.run(
-            ['python', '-m', 'pip', 'install', 'flake8'],
-            capture_output=True, text=True, check=False
-        )
-        if pip_install_flake8.returncode != 0:
-            error_message = f"Failed to install flake8. STDERR: {pip_install_flake8.stderr}"
-            if socketio:
-                socketio.emit('linting_error', {'message': error_message}, room=project_path if project_path else None)
-            return jsonify({"success": False, "error": error_message}), 500
+        # Check if Flake8 is installed, install if not
+        try:
+            subprocess.run(['python', '-m', 'flake8', '--version'], capture_output=True, text=True, check=True)
+            if socketio and project_path:
+                 socketio.emit('debug_message', {'message': 'Flake8 is already installed.'}, room=project_path)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            if socketio and project_path:
+                socketio.emit('debug_message', {'message': 'Flake8 not found, attempting to install.'}, room=project_path)
+            pip_install_flake8 = subprocess.run(
+                ['python', '-m', 'pip', 'install', 'flake8'],
+                capture_output=True, text=True, check=False
+            )
+            if pip_install_flake8.returncode != 0:
+                error_message = f"Failed to install flake8. STDERR: {pip_install_flake8.stderr}"
+                if socketio:
+                    socketio.emit('linting_error', {'message': error_message}, room=project_path if project_path else None)
+                return jsonify({"success": False, "error": error_message, "details": pip_install_flake8.stderr}), 500
+            if socketio and project_path:
+                socketio.emit('debug_message', {'message': 'Flake8 installed successfully.'}, room=project_path)
 
         temp_file_name = None
         temp_file = None
@@ -211,16 +220,25 @@ def format_code():
     socketio = current_app.extensions.get('socketio')
 
     try:
-        # Ensure Black is installed
-        pip_install_black = subprocess.run(
-            ['python', '-m', 'pip', 'install', 'black'],
-            capture_output=True, text=True, check=False
-        )
-        if pip_install_black.returncode != 0:
-            error_message = f"Failed to install black. STDERR: {pip_install_black.stderr}"
-            if socketio and project_path: # Check project_path for room
-                socketio.emit('formatting_error', {'message': error_message}, room=project_path)
-            return jsonify({"success": False, "error": error_message, "details": pip_install_black.stderr}), 500
+        # Check if Black is installed, install if not
+        try:
+            subprocess.run(['python', '-m', 'black', '--version'], capture_output=True, text=True, check=True)
+            if socketio and project_path:
+                socketio.emit('debug_message', {'message': 'Black is already installed.'}, room=project_path)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            if socketio and project_path:
+                socketio.emit('debug_message', {'message': 'Black not found, attempting to install.'}, room=project_path)
+            pip_install_black = subprocess.run(
+                ['python', '-m', 'pip', 'install', 'black'],
+                capture_output=True, text=True, check=False
+            )
+            if pip_install_black.returncode != 0:
+                error_message = f"Failed to install black. STDERR: {pip_install_black.stderr}"
+                if socketio and project_path: # Check project_path for room
+                    socketio.emit('formatting_error', {'message': error_message}, room=project_path)
+                return jsonify({"success": False, "error": error_message, "details": pip_install_black.stderr}), 500
+            if socketio and project_path:
+                socketio.emit('debug_message', {'message': 'Black installed successfully.'}, room=project_path)
 
         temp_file_descriptor, temp_file_name = tempfile.mkstemp(suffix='.py', dir=project_path if project_path and os.path.isdir(project_path) else None)
 
