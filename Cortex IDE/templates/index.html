@@ -57,6 +57,19 @@
                 Welcome! Enter a project name above to begin.
             </div>
         </div>
+        <div id="git-panel" class="panel">
+            <div class="panel-header">Git Management</div>
+            <div class="panel-content">
+                <button id="git-init-btn">Git Init</button>
+                <button id="git-status-btn">Status</button>
+                <button id="git-add-all-btn">Add All</button>
+                <form id="git-commit-form" class="input-form">
+                    <input type="text" id="commit-message-input" placeholder="Commit message..." required autocomplete="off">
+                    <button type="submit">Commit</button>
+                </form>
+                <pre id="git-output" class="terminal-output"></pre>
+            </div>
+        </div>
         <div id="file-viewer-panel" class="panel">
             <div class="panel-header">
                 <span id="file-viewer-header">File Viewer</span>
@@ -77,5 +90,6 @@
     <script src="{{ url_for('static', filename='js/package_installer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/python_linter_addon.js') }}"></script>
     <script src="{{ url_for('static', filename='js/code_formatter_addon.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/git_addon.js') }}"></script>
 </body>
 </html>

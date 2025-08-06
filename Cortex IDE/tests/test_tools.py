@@ -2,6 +2,9 @@ import pytest
 import os
 import json
 from unittest.mock import patch, MagicMock, mock_open
+from pathlib import Path
+import requests
+from werkzeug.utils import secure_filename
 
 # Adjust path to import tools from the parent directory
 import sys

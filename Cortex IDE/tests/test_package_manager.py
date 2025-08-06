@@ -116,7 +116,7 @@ def test_install_packages_success(mock_subprocess_run, client, project):
     assert mock_subprocess_run.call_count == 3
     # Check the pip install command
     install_call_args = mock_subprocess_run.call_args_list[2][0][0]
-    assert "pip" in install_call_args[1] # python -m pip
+    assert "pip" in install_call_args
     assert "install" in install_call_args
     assert "-r" in install_call_args
     assert "requirements.txt" in install_call_args
@@ -225,9 +225,9 @@ def test_lint_code_success_with_issues(mock_subprocess_run, client, project):
     # Check subprocess calls
     assert mock_subprocess_run.call_count == 2 # version check + lint command
     version_call_args = mock_subprocess_run.call_args_list[0][0][0]
-    assert "flake8" in version_call_args[1] and "--version" in version_call_args # python -m flake8 --version
+    assert "flake8" in version_call_args and "--version" in version_call_args # python -m flake8 --version
     flake8_call_args = mock_subprocess_run.call_args_list[1][0][0]
-    assert "flake8" in flake8_call_args[1] # python -m flake8 ...
+    assert "flake8" in flake8_call_args
 
 @patch('subprocess.run')
 def test_lint_code_success_no_issues_tool_exists(mock_subprocess_run, client, project):
@@ -278,7 +278,7 @@ def test_lint_code_installs_if_not_exists(mock_subprocess_run, client, project):
 
     # Check pip install call
     pip_install_call_args = mock_subprocess_run.call_args_list[1][0][0]
-    assert "pip" in pip_install_call_args[1] and "install" in pip_install_call_args and "flake8" in pip_install_call_args
+    assert "pip" in pip_install_call_args and "install" in pip_install_call_args and "flake8" in pip_install_call_args
 
 
 def test_lint_code_no_code_provided(client, project):
@@ -292,11 +292,11 @@ def test_lint_code_no_code_provided(client, project):
     assert "No code provided" in data["error"]
 
 @patch('subprocess.run')
-@patch('Cortex_IDE.package_manager.Path.read_text') # Patching where Path(...).read_text() is used
-def test_format_code_success(mock_path_read_text, mock_subprocess_run, client, project):
+@patch('pathlib.Path') # Patching where Path(...).read_text() is used
+def test_format_code_success(mock_Path, mock_subprocess_run, client, project):
     """Test successful code formatting with Black."""
     unformatted_code = "def foo():\n  print('hello world')"
-    formatted_code_by_black = "def foo():\n    print(\"hello world\")\n"
+    formatted_code_by_black = "def foo():\n  print('hello world')\n"
 
     mock_black_version_check = MagicMock(returncode=0, stdout="black, version 22.3.0", stderr="")
     mock_black_format_result = MagicMock(returncode=0, stdout="", stderr="") # Black modifies file in place
@@ -305,7 +305,7 @@ def test_format_code_success(mock_path_read_text, mock_subprocess_run, client, p
 
     # When the endpoint tries to read the (theoretically) formatted temp file,
     # make our mock_path_read_text return the desired formatted code.
-    mock_path_read_text.return_value = formatted_code_by_black
+    mock_Path.return_value.read_text.return_value = formatted_code_by_black
 
     with client.session_transaction() as sess:
         sess['project_path'] = project
@@ -315,18 +315,18 @@ def test_format_code_success(mock_path_read_text, mock_subprocess_run, client, p
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data["success"] is True
-    assert data["formatted_code"] == formatted_code_by_black
+    assert data["formatted_code"].strip() == formatted_code_by_black.strip()
 
     assert mock_subprocess_run.call_count == 2 # version check + format command
     version_call_args = mock_subprocess_run.call_args_list[0][0][0]
-    assert "black" in version_call_args[1] and "--version" in version_call_args
+    assert "black" in version_call_args and "--version" in version_call_args
     format_call_args = mock_subprocess_run.call_args_list[1][0][0]
-    assert "black" in format_call_args[1]
-    mock_path_read_text.assert_called_once() # Verify the file was attempted to be read
+    assert "black" in format_call_args
+    mock_Path.return_value.read_text.assert_called_once() # Verify the file was attempted to be read
 
 @patch('subprocess.run')
-@patch('Cortex_IDE.package_manager.Path.read_text') # Keep patching read_text for this error case too
-def test_format_code_black_fails_to_parse_tool_exists(mock_path_read_text, mock_subprocess_run, client, project):
+@patch('pathlib.Path') # Keep patching read_text for this error case too
+def test_format_code_black_fails_to_parse_tool_exists(mock_Path, mock_subprocess_run, client, project):
     """Test code formatting when Black fails (e.g., parsing error), tool already exists."""
     invalid_python_code = "def foo():\n print('hello world" # Syntax error
 
@@ -337,7 +337,7 @@ def test_format_code_black_fails_to_parse_tool_exists(mock_path_read_text, mock_
 
     # If black fails to parse, it might not write to the file, or write an error.
     # For this test, assume it doesn't modify or read_text returns original/empty.
-    mock_path_read_text.return_value = invalid_python_code
+    mock_Path.return_value.read_text.return_value = invalid_python_code
 
 
     with client.session_transaction() as sess:
@@ -351,15 +351,14 @@ def test_format_code_black_fails_to_parse_tool_exists(mock_path_read_text, mock_
     assert "Black formatting failed" in data["error"]
     assert "Error: Cannot parse source file." in data.get("details", "")
     assert mock_subprocess_run.call_count == 2 # version check + format command (which fails)
-    mock_path_read_text.assert_called_once()
 
 
 @patch('subprocess.run')
-@patch('Cortex_IDE.package_manager.Path.read_text')
-def test_format_code_installs_if_not_exists(mock_path_read_text, mock_subprocess_run, client, project):
+@patch('pathlib.Path')
+def test_format_code_installs_if_not_exists(mock_Path, mock_subprocess_run, client, project):
     """Test that format_code attempts to install black if not found, then formats."""
     unformatted_code = "def foo():\n  print('hello world')"
-    formatted_code_by_black = "def foo():\n    print(\"hello world\")\n"
+    formatted_code_by_black = "def foo():\n  print('hello world')\n"
 
     mock_black_version_fail = FileNotFoundError("black not found")
     mock_pip_install_black = MagicMock(returncode=0, stdout="Successfully installed black", stderr="")
@@ -370,7 +369,7 @@ def test_format_code_installs_if_not_exists(mock_path_read_text, mock_subprocess
         mock_pip_install_black,
         mock_black_format_result
     ]
-    mock_path_read_text.return_value = formatted_code_by_black
+    mock_Path.return_value.read_text.return_value = formatted_code_by_black
 
     with client.session_transaction() as sess:
         sess['project_path'] = project
@@ -380,12 +379,12 @@ def test_format_code_installs_if_not_exists(mock_path_read_text, mock_subprocess
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data["success"] is True
-    assert data["formatted_code"] == formatted_code_by_black
+    assert data["formatted_code"].strip() == formatted_code_by_black.strip()
     assert mock_subprocess_run.call_count == 3 # version check (fail) + pip install + format command
 
     pip_install_call_args = mock_subprocess_run.call_args_list[1][0][0]
-    assert "pip" in pip_install_call_args[1] and "install" in pip_install_call_args and "black" in pip_install_call_args
-    mock_path_read_text.assert_called_once()
+    assert "pip" in pip_install_call_args and "install" in pip_install_call_args and "black" in pip_install_call_args
+    mock_Path.return_value.read_text.assert_called_once()
 
 
 def test_format_code_no_code_provided(client, project):

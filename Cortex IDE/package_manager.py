@@ -3,7 +3,8 @@ import subprocess
 import tempfile
 import re
 from flask import Blueprint, jsonify, request, session, current_app
-from .tools import get_safe_path # Assuming tools.py is in the same directory
+from tools import get_safe_path # Assuming tools.py is in the same directory
+from pathlib import Path
 
 package_manager_bp = Blueprint('package_manager', __name__)
 
@@ -264,9 +265,7 @@ def format_code():
                 # A more robust check would be to see if Black explicitly states "error:" in stderr.
                 pass # We will try to read the file content anyway. Black modifies in-place.
 
-            formatted_code = ""
-            with open(temp_file_name, 'r') as f:
-                formatted_code = f.read()
+            formatted_code = Path(temp_file_name).read_text()
 
             if black_process.returncode > 1 : # Indicates a more serious error with Black itself
                  error_detail = black_process.stderr or "Black failed with a non-zero exit code but no stderr."
