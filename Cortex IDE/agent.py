@@ -69,13 +69,13 @@ def call_llm_stream(prompt, emit_func):
                         full_response += content
                         if emit_func:
                             emit_func('agent_stream_chunk', {'chunk': content})
-                        
+
                         # FIX: Check for the 'done' signal from the API
                         if json_chunk.get("done"):
                             break
                     except json.JSONDecodeError:
                         continue
-        
+
         print("\n--- RAW LLM STREAM RESPONSE ---\n")
         print(full_response)
         print("\n-----------------------------\n")
@@ -91,10 +91,10 @@ class Agent:
         self.emit = emit_func
         self.sleep = sleep_func
         self.tool_registry = ToolRegistry(project_path)
-        
+
         self.conversation_history = []
         self.log_history = []
-        
+
         self.is_running = False
         self.stop_requested = False
         self.max_consecutive_failures = 3
@@ -152,18 +152,18 @@ class Agent:
         """Generates the initial high-level plan using a provided code map."""
         self.log("Creating a plan with full project context...")
         self.emit('agent_thinking')
-        
+
         planning_prompt = f"""
-        You are a plan-generation AI. Your SOLE PURPOSE is to create a FLAWLESS, step-by-step plan in a JSON array of STRINGS. Each string is a high-level step. Failure to adhere to the directives will result in task termination.
+        You are a diligent and thoughtful AI planning assistant. Your goal is to create a robust, step-by-step plan in a JSON array of strings.
 
-        **DIRECTIVES:**
+        **Guidelines:**
 
-        1.  **THE CODE MAP IS GROUND TRUTH:** Your plan MUST be based on the files and components in the **Project Code Map**.
-        2.  **NO HALLUCINATIONS:** Do not add steps for non-existent files.
-        3.  **PLAN FORMAT:** The plan must be a JSON array of STRINGS describing each step. Do NOT output tool calls directly.
+        1.  **Analyze the Code Map:** Base your plan on the files and components outlined in the **Project Code Map**.
+        2.  **Stick to Facts:** Avoid making assumptions about files that don't exist.
+        3.  **Clear Steps:** Each string in the JSON array should be a clear, high-level step.
+        4.  **JSON Format:** Your final output must be a JSON array of strings.
 
-        **PLAN FORMAT EXAMPLE:**
-        A correct plan is a list of descriptive strings.
+        **Example of a good plan:**
         ```json
         [
             "Delete the old 'menu.py' and 'menu_functions.py' files as they are not well-integrated.",
@@ -172,28 +172,20 @@ class Agent:
         ]
         ```
 
-        An **INCORRECT** plan is a list of tool call objects. DO NOT output a plan in this format.
-        ```json
-        [
-            {{"tool": "delete_file", "arguments": {{"filename": "menu.py"}}}},
-            {{"tool": "save_file", "arguments": {{"filename": "main.py", "content": "..."}}}}
-        ]
-        ```
-
         **Available Tools:**
         {self.tool_registry.get_tool_definitions()}
 
         ---
-        ## **Project Code Map (Authoritative)**
+        ## **Project Code Map**
         {code_map}
         ---
 
         ## **User Request:**
         {self.conversation_history[-1]['content']}
 
-        Respond with NOTHING BUT the final, validated JSON plan in the correct string-array format.
+        Please provide the plan as a single, valid JSON array of strings.
         """
-        
+
         response_str = call_llm_stream(planning_prompt, self.emit)
         if not response_str:
             self.log("Planning failed: LLM call returned no response.")
@@ -216,8 +208,8 @@ class Agent:
 
             # The f-string here correctly uses the full length of the current plan
             self.log(f"--- Executing Step {step_index + 1}/{len(plan)}: {step} ---")
-            
-            action_json = self._determine_next_action(plan, step, current_code_map)
+
+            action_json = self._determine_next_action(plan, step, current_code_map, self.conversation_history)
 
             if not action_json:
                 self.log(f"Failed to determine action for step. Requesting a new plan.")
@@ -230,7 +222,7 @@ class Agent:
                 reason = action_json.get("arguments", {}).get("reason", "No reason specified.")
                 self.conversation_history.append({"role": "system", "content": f"The plan was flawed. Reason: {reason}. A new plan is required."})
                 return "REPLAN_REQUESTED" # This return exits the function
-            
+
             result = self._execute_tool(action_json)
 
             if "Error:" in result or "failed" in result.lower():
@@ -238,57 +230,62 @@ class Agent:
                 self.log("Aborting current plan and requesting a new one.")
                 self.conversation_history.append({"role": "system", "content": f"The last step failed. Reason: {result}. A new plan is required to correct the error."})
                 return "REPLAN_REQUESTED"
-            
+
             if action_json.get("tool_name") in ['save_file', 'delete_file', 'create_folder', 'delete_folder']:
                 self.log("File system changed. Refreshing code map for the next step...")
 
                 filename_changed = action_json.get("arguments", {}).get("filename")
                 self.emit('file_system_updated', {'filename': filename_changed})
-                
+
                 current_code_map = generate_code_map(self.project_path)
 
         self.log("Plan execution completed successfully.")
         return "COMPLETED"
 
-    def _determine_next_action(self, plan: list, current_step: str, code_map: str):
+    def _determine_next_action(self, plan: list, current_step: str, code_map: str, conversation_history: list):
         """Calls the LLM to get the next tool call for a given step, using the code map."""
         self.emit('agent_thinking')
-        
+
         execution_prompt = f"""
-        You are an action-execution AI unit. Your job is to execute ONE step from a plan by emitting a single JSON tool call. Deviation is not permitted.
+        You are a helpful AI assistant. Your task is to execute one step from a plan by emitting a single JSON tool call.
 
-        **EXECUTION PROTOCOL:**
+        **Context:**
 
-        1.  **VALIDATE AGAINST CODE MAP:** All arguments for your tool call (e.g., `filename`) MUST be validated against the **Project Code Map**. If a path does not exist in the map, you cannot use it.
-        2.  **EXECUTE CURRENT TASK ONLY:** Your focus is ONLY the **Current Task** provided. Do not look ahead or behind in the plan. Do not infer intent beyond the explicit instruction.
-        3.  **IMPOSSIBLE TASK PROTOCOL:** If the **Current Task** is impossible to perform with a single tool call (e.g., it requires deleting two files but the tool only handles one), your ONLY valid action is to call the `replan` tool. DO NOT attempt to improvise.
-        4.  **PLACEHOLDERS** Never use any placeholders, TODOS, "Use exisiting code", etc when writing code. Always write the code yourself.
+        1.  **Code Map:** Refer to the **Project Code Map** for the current state of the files.
+        2.  **Conversation History:** Review the **Conversation History** to understand the user's goals and previous actions.
+        3.  **Current Task:** Focus on executing the **Current Task** from the plan.
+        4.  **Tool Use:** If a task is too complex for one tool, use the `replan` tool to request a better plan.
+        5.  **Code Generation:** When writing code, do not use placeholders. Write the full code yourself.
 
-            Example of a valid `replan` call:
-            ```json
-            {{
-                "thought": "The current step requires deleting two files, which is not possible with a single `delete_file` call. I must replan.",
-                "action": {{
-                    "tool_name": "replan",
-                    "arguments": {{
-                        "reason": "The plan step 'Delete file A and file B' is invalid because only one file can be deleted per action. The plan needs to have separate steps for each file deletion."
-                    }}
+        **Example `replan` call:**
+        ```json
+        {{
+            "thought": "The current step requires deleting two files, but `delete_file` only handles one at a time. I need to replan.",
+            "action": {{
+                "tool_name": "replan",
+                "arguments": {{
+                    "reason": "The plan step 'Delete file A and file B' is invalid. The plan should have separate steps for each file deletion."
                 }}
             }}
-            ```
-        4.  **RESPONSE FORMAT:** Your response MUST be a single JSON object containing "thought" and "action" keys. NO other text or explanation is permitted.
+        }}
+        ```
+
+        **Response Format:**
+        Your response must be a single JSON object with "thought" and "action" keys.
 
         **Available Tools:**
         {self.tool_registry.get_tool_definitions()}
 
         ---
-        ## **Project Code Map (Authoritative)**
+        ## **Conversation History**
+        {json.dumps(conversation_history, indent=2)}
+        ---
+        ## **Project Code Map**
         {code_map}
         ---
-
         ## **Plan:**
         {json.dumps(plan)}
-
+        ---
         ## **Current Task:**
         **{current_step}**
 
@@ -298,7 +295,7 @@ class Agent:
         if not response_str:
             self.log("Action determination failed: LLM call returned no response.")
             return None
-            
+
         return self._parse_json_action(response_str)
 
     def _execute_tool(self, action_json: dict):
@@ -317,7 +314,7 @@ class Agent:
                 result = str(tool_function(self.project_path, **arguments))
         except Exception as e:
             result = f"Error executing tool '{tool_name}': {e}"
-        
+
         self.log(f"Result: {result}")
         self.conversation_history.append({"role": "tool", "content": result})
         return result
@@ -331,18 +328,18 @@ class Agent:
             json_str = _extract_first_json(response_str)
             if not json_str:
                 raise ValueError("No JSON array found in the response.")
-            
+
             plan_data = json.loads(json_str)
-            
+
             plan = []
             if isinstance(plan_data, list):
                 plan = plan_data
             elif isinstance(plan_data, dict):
                 plan = plan_data.get("plan", [])
-            
+
             if not isinstance(plan, list) or not all(isinstance(i, str) for i in plan):
                 raise ValueError("Parsed data is not a valid plan (a JSON array of strings).")
-            
+
             # If successful, log and return
             self.log("Plan created successfully.")
             self.emit('agent_plan_created', {'plan': plan})
@@ -370,16 +367,16 @@ class Agent:
 
             Return ONLY the corrected, valid JSON array of strings. Do not add any other text or commentary.
             '''
-            
+
             corrected_response = call_llm_stream(correction_prompt, None)
             try:
                 # Re-run validation on the corrected response
                 json_str = _extract_first_json(corrected_response)
                 if not json_str:
                     raise ValueError("No JSON array found in the corrected response.")
-                
+
                 corrected_data = json.loads(json_str)
-                
+
                 plan = []
                 if isinstance(corrected_data, list):
                     plan = corrected_data
@@ -388,7 +385,7 @@ class Agent:
 
                 if not isinstance(plan, list) or not all(isinstance(i, str) for i in plan):
                     raise ValueError("Corrected data is still not a valid plan (a JSON array of strings).")
-                
+
                 self.log("Plan created successfully after self-correction.")
                 self.emit('agent_plan_created', {'plan': plan})
                 self.conversation_history.append({"role": "agent", "content": f"I have created a plan: {json.dumps(plan)}"})
@@ -410,7 +407,7 @@ class Agent:
             json_str = _extract_first_json(response_str)
             if not json_str:
                 raise ValueError("No JSON object found in the response.")
-            
+
             action_data = json.loads(json_str)
 
             # Stricter validation of the parsed JSON.
@@ -421,14 +418,14 @@ class Agent:
             action = action_data.get("action")
             if not isinstance(action, dict) or "tool_name" not in action:
                 raise ValueError("The 'action' key must be an object with a 'tool_name'.")
-            
+
             self.log(f"Thought: {action_data['thought']}")
             return action_data['action'] # Return the action object
 
         except (ValueError, json.JSONDecodeError) as e:
             self.log(f"Action parsing failed: {e}. Attempting to self-correct...")
             print(f"--- FAILED TO PARSE ACTION ---\n{response_str}\n----------------------------")
-            
+
             # If parsing fails, ask the LLM to fix its own output.
             correction_prompt = f'''
             The following text was supposed to be a single, valid JSON object, but it is malformed.
@@ -451,19 +448,19 @@ class Agent:
 
             Return ONLY the corrected, valid JSON object. Do not add any other text or commentary.
             '''
-            
+
             corrected_response = call_llm_stream(correction_prompt, None) # No streaming for correction
             try:
                 # Re-run validation on the corrected response
                 json_str = _extract_first_json(corrected_response)
                 if not json_str:
                     raise ValueError("No JSON object found in the corrected response.")
-                
+
                 corrected_data = json.loads(json_str)
 
                 if "thought" not in corrected_data or "action" not in corrected_data:
                     raise ValueError("Corrected response is still missing 'thought' or 'action' keys.")
-                
+
                 action = corrected_data.get("action")
                 if not isinstance(action, dict) or "tool_name" not in action:
                     raise ValueError("The corrected 'action' key must be an object with a 'tool_name'.")
