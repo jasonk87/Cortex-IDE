@@ -113,7 +113,7 @@ class Agent:
         """The main entry point for the agent to start a task."""
         self.is_running = True
         self.stop_requested = False
-        self.conversation_history = [{"role": "user", "content": objective}]
+        self.conversation_history.append({"role": "user", "content": objective})
 
         try:
             # Phase 0: Get Context.
