@@ -121,71 +121,62 @@ class Agent:
             code_map = generate_code_map(self.project_path)
             self.log("Initial code map generated.")
 
-            # Enter the main planning-execution loop
-            while self.is_running and not self.stop_requested:
-                # Phase 1: Plan with Context.
-                self.log("Phase 1: Creating a new plan...")
-                plan = self._create_plan(code_map)
+            # Phase 1: Create the main plan
+            self.log("Phase 1: Creating a new plan...")
+            main_plan = self._create_plan(self.conversation_history)
+            if not main_plan:
+                self.log("Failed to create a main plan. Aborting task.")
+                return
 
-                if not plan:
-                    self.log("Failed to create a plan. Aborting task.")
-                    break # Exit the loop if planning fails
+            # Phase 2: Execute the main plan
+            execution_status = self._execute_plan(main_plan, code_map)
 
-                # Phase 2: Execute with Context.
-                execution_status = self._execute_plan(plan, code_map)
-
-                if execution_status == "REPLAN_REQUESTED":
-                    self.log("Re-planning as requested by the agent.")
-                    # The loop will now naturally restart, creating a new plan
-                    code_map = generate_code_map(self.project_path) # Refresh map before replanning
-                    continue
-                else:
-                    # If execution finished successfully or failed without a replan, exit.
-                    break
+            if execution_status == "COMPLETED":
+                self.log("Main plan executed successfully.")
+            else:
+                self.log(f"Main plan execution failed with status: {execution_status}")
 
         finally:
             self.log("Task finished.")
             self.is_running = False
             self.emit('task_finished')
 
-    def _create_plan(self, code_map: str):
-        """Generates the initial high-level plan using a provided code map."""
-        self.log("Creating a plan with full project context...")
-        self.emit('agent_thinking')
+    def _create_plan(self, conversation_history, is_sub_plan=False, failed_step=""):
+        """
+        Generates a plan or a sub-plan based on the conversation history.
+        """
+        if is_sub_plan:
+            self.log("Creating a sub-plan...")
+            prompt_context = f"""
+            You are a sub-planner. Your goal is to break down the following complex or failed task into a series of simple, executable steps.
+            The original task was: '{failed_step}'
+            """
+        else:
+            self.log("Creating a plan with full project context...")
+            prompt_context = "You are a diligent and thoughtful AI planning assistant. Your goal is to create a robust, step-by-step plan."
 
         planning_prompt = f"""
-        You are a diligent and thoughtful AI planning assistant. Your goal is to create a robust, step-by-step plan in a JSON array of strings.
+        {prompt_context}
 
         **Guidelines:**
-
-        1.  **Analyze the Code Map:** Base your plan on the files and components outlined in the **Project Code Map**.
-        2.  **Stick to Facts:** Avoid making assumptions about files that don't exist.
-        3.  **Clear Steps:** Each string in the JSON array should be a clear, high-level step.
-        4.  **JSON Format:** Your final output must be a JSON array of strings.
-
-        **Example of a good plan:**
-        ```json
-        [
-            "Delete the old 'menu.py' and 'menu_functions.py' files as they are not well-integrated.",
-            "Rewrite 'main.py' to be the single entry point for the game, containing all logic.",
-            "Execute the new 'main.py' to test the final game."
-        ]
-        ```
+        1.  **Analyze Context:** Base your plan on the **Full Conversation History** and the **Project Code Map**.
+        2.  **Correct Errors:** If you are creating a sub-plan, your purpose is to correct a previous error or break down a complex step.
+        3.  **JSON Format:** Your final output must be a JSON array of strings.
 
         **Available Tools:**
         {self.tool_registry.get_tool_definitions()}
 
         ---
-        ## **Project Code Map**
-        {code_map}
+        ## **Full Conversation History**
+        {json.dumps(conversation_history, indent=2)}
         ---
-
-        ## **User Request:**
-        {self.conversation_history[-1]['content']}
-
+        ## **Project Code Map**
+        {generate_code_map(self.project_path)}
+        ---
         Please provide the plan as a single, valid JSON array of strings.
         """
 
+        self.emit('agent_thinking')
         response_str = call_llm_stream(planning_prompt, self.emit)
         if not response_str:
             self.log("Planning failed: LLM call returned no response.")
@@ -193,85 +184,91 @@ class Agent:
 
         return self._parse_json_plan(response_str)
 
-    def _execute_plan(self, plan: list, code_map: str):
-        """
-        Executes a plan, handling failures and replan signals robustly.
-        If any step fails or a replan is requested, it aborts the plan and returns a status.
-        """
-        self.log(f"Phase 2: Executing plan ({len(plan)} steps)")
-        current_code_map = code_map
 
+    def _execute_plan(self, plan: list, code_map: str, depth=0):
+        """
+        Recursively executes a plan. If a sub-plan is created, it calls itself to execute it.
+        """
+        plan_type = "Sub-plan" if depth > 0 else "Plan"
+        self.log(f"Executing {plan_type} ({len(plan)} steps)")
+
+        current_code_map = code_map
         for step_index, step in enumerate(plan):
             if self.stop_requested:
-                self.log("Execution stopped by user.")
+                self.log(f"Execution stopped by user during {plan_type}.")
                 return "STOPPED"
 
-            # The f-string here correctly uses the full length of the current plan
-            self.log(f"--- Executing Step {step_index + 1}/{len(plan)}: {step} ---")
+            self.log(f"--- Executing Step {step_index + 1}/{len(plan)} of {plan_type}: {step} ---")
 
             action_json = self._determine_next_action(plan, step, current_code_map, self.conversation_history)
 
             if not action_json:
-                self.log(f"Failed to determine action for step. Requesting a new plan.")
-                self.conversation_history.append({"role": "system", "content": "Could not determine the next action. A new plan is required."})
-                return "REPLAN_REQUESTED"
+                self.log(f"Failed to determine action for step. Aborting {plan_type}.")
+                return "ACTION_FAILED"
 
-            # This is the critical check. If the agent decides to replan, we stop everything.
             if action_json.get("tool_name") == 'replan':
-                self.log("Agent has requested a replan. Aborting current plan.")
-                reason = action_json.get("arguments", {}).get("reason", "No reason specified.")
-                self.conversation_history.append({"role": "system", "content": f"The plan was flawed. Reason: {reason}. A new plan is required."})
-                return "REPLAN_REQUESTED" # This return exits the function
+                self.log(f"Step requires a sub-plan. Reason: {action_json.get('arguments', {}).get('reason', 'N/A')}")
+
+                sub_plan = self._create_plan(self.conversation_history, is_sub_plan=True, failed_step=step)
+
+                if not sub_plan:
+                    self.log("Failed to create sub-plan. Aborting current plan.")
+                    return "REPLAN_FAILED"
+
+                # Recursive call to execute the sub-plan
+                sub_plan_status = self._execute_plan(sub_plan, current_code_map, depth + 1)
+
+                if sub_plan_status != "COMPLETED":
+                    self.log(f"Sub-plan execution failed with status {sub_plan_status}. Aborting main plan.")
+                    return "SUB_PLAN_FAILED"
+
+                self.log("Sub-plan completed successfully. Resuming main plan.")
+                # After sub-plan completes, continue to the next step of the current plan
+                continue
 
             result = self._execute_tool(action_json)
 
             if "Error:" in result or "failed" in result.lower():
-                self.log(f"Step failed critically. Error: {result}")
-                self.log("Aborting current plan and requesting a new one.")
-                self.conversation_history.append({"role": "system", "content": f"The last step failed. Reason: {result}. A new plan is required to correct the error."})
-                return "REPLAN_REQUESTED"
+                self.log(f"Step failed critically. Error: {result}. Aborting {plan_type}.")
+                return "STEP_FAILED"
 
             if action_json.get("tool_name") in ['save_file', 'delete_file', 'create_folder', 'delete_folder']:
                 self.log("File system changed. Refreshing code map for the next step...")
-
                 filename_changed = action_json.get("arguments", {}).get("filename")
                 self.emit('file_system_updated', {'filename': filename_changed})
-
                 current_code_map = generate_code_map(self.project_path)
 
-        self.log("Plan execution completed successfully.")
+        self.log(f"{plan_type} execution completed successfully.")
         return "COMPLETED"
 
     def _determine_next_action(self, plan: list, current_step: str, code_map: str, conversation_history: list):
-        """Calls the LLM to get the next tool call for a given step, using the code map."""
+        """Calls the LLM to get the next tool call for a given step."""
         self.emit('agent_thinking')
 
         execution_prompt = f"""
-        You are a helpful AI assistant. Your task is to execute one step from a plan by emitting a single JSON tool call.
+        You are a helpful AI assistant. Your task is to select the next action to take to progress the plan.
 
         **Context:**
-
-        1.  **Code Map:** Refer to the **Project Code Map** for the current state of the files.
-        2.  **Conversation History:** Review the **Conversation History** to understand the user's goals and previous actions.
-        3.  **Current Task:** Focus on executing the **Current Task** from the plan.
-        4.  **Tool Use:** If a task is too complex for one tool, use the `replan` tool to request a better plan.
-        5.  **Code Generation:** When writing code, do not use placeholders. Write the full code yourself.
+        1.  **Code Map & History:** Use the **Project Code Map** and **Conversation History** for context.
+        2.  **Current Task:** Your goal is to execute the **Current Task** from the plan.
+        3.  **Sub-planning:** If the **Current Task** is too complex for a single tool (e.g., deleting multiple files) or if you notice it's already been completed, call the `replan` tool. This will trigger the creation of a "micro-plan" to handle this step.
+        4.  **Full Code:** When using `save_file`, always provide the complete, final code. Do not use placeholders.
 
         **Example `replan` call:**
         ```json
         {{
-            "thought": "The current step requires deleting two files, but `delete_file` only handles one at a time. I need to replan.",
+            "thought": "The current step 'Delete old files' requires multiple `delete_file` calls. I must trigger a sub-plan to handle this.",
             "action": {{
                 "tool_name": "replan",
                 "arguments": {{
-                    "reason": "The plan step 'Delete file A and file B' is invalid. The plan should have separate steps for each file deletion."
+                    "reason": "The step is too complex and requires multiple deletions."
                 }}
             }}
         }}
         ```
 
         **Response Format:**
-        Your response must be a single JSON object with "thought" and "action" keys.
+        Your response MUST be a single JSON object with "thought" and "action" keys.
 
         **Available Tools:**
         {self.tool_registry.get_tool_definitions()}
@@ -283,7 +280,7 @@ class Agent:
         ## **Project Code Map**
         {code_map}
         ---
-        ## **Plan:**
+        ## **Current Plan**
         {json.dumps(plan)}
         ---
         ## **Current Task:**
@@ -310,7 +307,6 @@ class Agent:
                 result = f"Error: Unknown tool '{tool_name}'"
             else:
                 self.log(f"Action: {tool_name}, Arguments: {arguments}")
-                # Pass project_path to all tools, and unpack the rest of the args
                 result = str(tool_function(self.project_path, **arguments))
         except Exception as e:
             result = f"Error executing tool '{tool_name}': {e}"
