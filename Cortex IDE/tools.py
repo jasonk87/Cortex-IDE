@@ -274,6 +274,44 @@ def apply_diff(project_path: str, filename: str, diff_content: str) -> str:
     except Exception as e:
         return f"Error applying diff: {e}"
 
+def run_tests(project_path: str, timeout: int = 60) -> str:
+    """
+    Runs the pytest test suite within the project's directory.
+    Captures and returns the output, including test results and errors.
+    """
+    try:
+        if not os.path.isdir(project_path):
+            return "Error: Project path is not a valid directory."
+
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+
+        result = subprocess.run(
+            ['pytest'],
+            capture_output=True, text=True, timeout=timeout,
+            cwd=project_path, encoding='utf-8', env=env
+        )
+
+        output = f"Exit Code: {result.returncode}\n"
+        if result.stdout:
+            output += f"--- Test Output (stdout) ---\n{result.stdout}\n"
+        if result.stderr:
+            output += f"--- Test Errors (stderr) ---\n{result.stderr}\n"
+
+        if result.returncode == 0:
+            return f"All tests passed.\n\n{output}"
+        elif result.returncode == 1:
+            return f"Tests failed.\n\n{output}"
+        else:
+            return f"Pytest exited with an unusual code. See output for details.\n\n{output}"
+
+    except FileNotFoundError:
+        return "Error: `pytest` command not found. Please ensure pytest is installed in the environment."
+    except subprocess.TimeoutExpired:
+        return f"Error: Test execution timed out after {timeout} seconds."
+    except Exception as e:
+        return f"An unexpected error occurred while running tests: {e}"
+
 # --- New Lint and Format Tools ---
 def lint_file_tool(project_path: str, filename: str) -> str:
     """
@@ -394,6 +432,7 @@ class ToolRegistry:
             "create_subtask": create_subtask,
             "lint_file": lint_file_tool, # New
             "format_file": format_file_tool, # New
+            "run_tests": run_tests, # New
         }
 
     def get_tool(self, name: str):
@@ -408,6 +447,7 @@ class ToolRegistry:
             "- list_files(): List every file in the current project.\n"
             "- read_file(filename: str): Return the full contents of a file.\n"
             "- execute_python_file(filename: str, timeout: int = 10): Run a Python script with a timeout (default 10s). The script will be terminated if it runs longer.\n"
+            "- run_tests(): Runs the pytest test suite for the project and returns the results.\n"
             "- delete_file(filename: str): Delete a file.\n"
             "- find_line_numbers(filename: str, keyword: str): Find all line numbers where a keyword appears in one file.\n"
             "- search_file_content(keyword: str): Search every file for a keyword (case-insensitive).\n"
