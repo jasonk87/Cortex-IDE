@@ -8,6 +8,7 @@ import os
 import ast
 from pathlib import Path
 from typing import Dict, List, Any
+from memory_manager import MemoryManager # Import MemoryManager
 
 OLLAMA_ENDPOINT = "http://192.168.86.30:11434/api/generate"
 OLLAMA_MODEL = "qwen3:8B"
@@ -99,6 +100,10 @@ class Agent:
         self.stop_requested = False
         self.max_consecutive_failures = 3
 
+        # Initialize MemoryManager
+        self.memory = MemoryManager(project_path)
+        self.log("MemoryManager initialized.")
+
     def log(self, message):
         print(f"Agent Log: {message}")
         self.log_history.append(message)
@@ -133,6 +138,8 @@ class Agent:
 
             if execution_status == "COMPLETED":
                 self.log("Main plan executed successfully.")
+                # Phase 3: Create and save a memory of the task
+                self._summarize_and_save_memory()
             else:
                 self.log(f"Main plan execution failed with status: {execution_status}")
 
@@ -145,6 +152,15 @@ class Agent:
         """
         Generates a plan or a sub-plan based on the conversation history.
         """
+        # Search for relevant memories before planning
+        last_user_message = conversation_history[-1]['content']
+        relevant_memories = self.memory.search_memories(last_user_message, n_results=3)
+        memories_context = "No relevant memories found."
+        if relevant_memories:
+            self.log(f"Found {len(relevant_memories)} relevant memories.")
+            formatted_memories = "\n".join([f"- {mem}" for mem in relevant_memories])
+            memories_context = f"Here are some relevant memories from past tasks:\n{formatted_memories}"
+
         if is_sub_plan:
             self.log("Creating a sub-plan...")
             prompt_context = f"""
@@ -159,13 +175,16 @@ class Agent:
         {prompt_context}
 
         **Guidelines:**
-        1.  **Analyze Context:** Base your plan on the **Full Conversation History** and the **Project Code Map**.
+        1.  **Analyze Context:** Base your plan on the **Full Conversation History**, **Relevant Memories**, and the **Project Code Map**.
         2.  **Correct Errors:** If you are creating a sub-plan, your purpose is to correct a previous error or break down a complex step.
         3.  **JSON Format:** Your final output must be a JSON array of strings.
 
         **Available Tools:**
         {self.tool_registry.get_tool_definitions()}
 
+        ---
+        ## **Relevant Memories**
+        {memories_context}
         ---
         ## **Full Conversation History**
         {json.dumps(conversation_history, indent=2)}
@@ -240,6 +259,34 @@ class Agent:
 
         self.log(f"{plan_type} execution completed successfully.")
         return "COMPLETED"
+
+    def _summarize_and_save_memory(self):
+        """
+        Summarizes the conversation and saves a key takeaway to the MemoryManager.
+        """
+        self.log("Reflecting on the completed task to create a memory...")
+
+        summarization_prompt = f"""
+        Based on the following conversation history, what is the most important lesson learned or accomplishment achieved?
+        Summarize it as a concise, single sentence that would be useful for a future AI agent working on a similar task.
+
+        CONVERSATION HISTORY:
+        {json.dumps(self.conversation_history, indent=2)}
+
+        Respond with only the single sentence summary.
+        """
+
+        self.emit('agent_thinking')
+        # We don't stream the summarization, as it's a background task.
+        summary = call_llm_stream(summarization_prompt, None)
+
+        if summary:
+            # Clean up the summary a bit
+            summary = summary.strip().replace('"', '')
+            self.log(f"Generated memory summary: {summary}")
+            self.memory.add_memory(summary)
+        else:
+            self.log("Could not generate a memory for this task.")
 
     def _determine_next_action(self, plan: list, current_step: str, code_map: str, conversation_history: list):
         """Calls the LLM to get the next tool call for a given step."""
