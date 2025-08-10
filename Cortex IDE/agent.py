@@ -152,7 +152,6 @@ class Agent:
         """
         Generates a plan or a sub-plan based on the conversation history.
         """
-        # Search for relevant memories before planning
         last_user_message = conversation_history[-1]['content']
         relevant_memories = self.memory.search_memories(last_user_message, n_results=3)
         memories_context = "No relevant memories found."
@@ -163,36 +162,35 @@ class Agent:
 
         if is_sub_plan:
             self.log("Creating a sub-plan...")
-            prompt_context = f"""
-            You are a sub-planner. Your goal is to break down the following complex or failed task into a series of simple, executable steps.
-            The original task was: '{failed_step}'
-            """
+            prompt_context = f"You are a sub-planner. Your goal is to break down the following complex or failed task into a series of simple, executable steps. The original task was: '{failed_step}'"
         else:
             self.log("Creating a plan with full project context...")
-            prompt_context = "You are a diligent and thoughtful AI planning assistant. Your goal is to create a robust, step-by-step plan."
+            prompt_context = "You are an expert AI software developer. Your goal is to create a robust, step-by-step plan to accomplish the user's objective."
 
         planning_prompt = f"""
         {prompt_context}
 
-        **Guidelines:**
-        1.  **Analyze Context:** Base your plan on the **Full Conversation History**, **Relevant Memories**, and the **Project Code Map**.
-        2.  **Correct Errors:** If you are creating a sub-plan, your purpose is to correct a previous error or break down a complex step.
-        3.  **JSON Format:** Your final output must be a JSON array of strings.
+        **INSTRUCTIONS: CHAIN OF THOUGHT**
+        Before you output the final JSON plan, you MUST engage in a step-by-step thinking process. This process will be streamed to the user.
 
-        **Available Tools:**
-        {self.tool_registry.get_tool_definitions()}
+        1.  **Deconstruct the Goal:** What is the user's ultimate objective? What are the key components or features they are asking for?
+        2.  **Identify Dependencies & Gaps:** Based on the Project Code Map and conversation history, what files need to be created, modified, or deleted? Are there any potential conflicts or missing pieces of information?
+        3.  **Structure the Code:** How should the new code be organized? What classes, functions, or modules are needed? How will they interact? Think about modularity and separation of concerns.
+        4.  **Draft the Steps:** Based on your reasoning, draft a high-level, step-by-step plan. Each step should be a clear, logical action. Ensure the plan is comprehensive and addresses the full scope of the user's request.
+        5.  **Final Output:** After your thinking process, present the final plan as a single, valid JSON array of strings. **DO NOT** include your thinking process in the final JSON output.
 
-        ---
-        ## **Relevant Memories**
+        **CONTEXT:**
+
+        **Relevant Memories:**
         {memories_context}
         ---
-        ## **Full Conversation History**
+        **Full Conversation History:**
         {json.dumps(conversation_history, indent=2)}
         ---
-        ## **Project Code Map**
+        **Project Code Map:**
         {generate_code_map(self.project_path)}
         ---
-        Please provide the plan as a single, valid JSON array of strings.
+        Begin your thinking process now. After you have reasoned through the plan, provide the JSON output.
         """
 
         self.emit('agent_thinking')
@@ -251,7 +249,7 @@ class Agent:
                 self.log(f"Step failed critically. Error: {result}. Aborting {plan_type}.")
                 return "STEP_FAILED"
 
-            if action_json.get("tool_name") in ['save_file', 'delete_file', 'create_folder', 'delete_folder']:
+            if action_json.get("tool_name") in ['save_file', 'delete_file', 'create_folder', 'delete_folder', 'search_and_replace', 'insert_at_line']:
                 self.log("File system changed. Refreshing code map for the next step...")
                 filename_changed = action_json.get("arguments", {}).get("filename")
                 self.emit('file_system_updated', {'filename': filename_changed})
@@ -299,7 +297,7 @@ class Agent:
         1.  **Code Map & History:** Use the **Project Code Map** and **Conversation History** for context.
         2.  **Current Task:** Your goal is to execute the **Current Task** from the plan.
         3.  **Sub-planning:** If the **Current Task** is too complex for a single tool (e.g., deleting multiple files) or if you notice it's already been completed, call the `replan` tool. This will trigger the creation of a "micro-plan" to handle this step.
-        4.  **Full Code:** When using `save_file`, always provide the complete, final code. Do not use placeholders.
+        4.  **Full Code:** When using `save_file` or other file modification tools, always provide the complete, final code. Do not use placeholders.
 
         **Example `replan` call:**
         ```json
