@@ -10,8 +10,15 @@ from pathlib import Path
 from typing import Dict, List, Any
 from memory_manager import MemoryManager # Import MemoryManager
 
-OLLAMA_ENDPOINT = "http://192.168.86.30:11434/api/generate"
-OLLAMA_MODEL = "qwen3:8B"
+# Load configuration from config.json
+try:
+    with open('Cortex IDE/config.json', 'r') as f:
+        config = json.load(f)
+    OLLAMA_ENDPOINT = config.get("OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/generate")
+    OLLAMA_MODEL = config.get("OLLAMA_MODEL", "llama2")
+except (FileNotFoundError, json.JSONDecodeError):
+    OLLAMA_ENDPOINT = "http://127.0.0.1:11434/api/generate"
+    OLLAMA_MODEL = "llama2"
 
 def _extract_first_json(text: str) -> str | None:
     """

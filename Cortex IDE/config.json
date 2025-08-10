@@ -1,0 +1,4 @@
+{
+    "OLLAMA_ENDPOINT": "http://192.168.86.30:11434/api/generate",
+    "OLLAMA_MODEL": "qwen3:8B"
+}
