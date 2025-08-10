@@ -312,6 +312,60 @@ def run_tests(project_path: str, timeout: int = 60) -> str:
     except Exception as e:
         return f"An unexpected error occurred while running tests: {e}"
 
+def search_and_replace(project_path: str, filename: str, search_query: str, replacement_text: str) -> str:
+    """
+    Performs a search and replace operation on a file.
+    Replaces all occurrences of search_query with replacement_text.
+    """
+    try:
+        file_path = get_safe_path(project_path, filename)
+        if not os.path.exists(file_path):
+            return f"Error: File '{os.path.basename(filename)}' not found."
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        if search_query not in content:
+            return f"Error: Search query '{search_query}' not found in {os.path.basename(filename)}."
+
+        new_content = content.replace(search_query, replacement_text)
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+        return f"Successfully replaced '{search_query}' with '{replacement_text}' in {os.path.basename(filename)}."
+    except Exception as e:
+        return f"Error during search and replace in '{filename}': {e}"
+
+def insert_at_line(project_path: str, filename: str, line_number: int, content_to_insert: str) -> str:
+    """
+    Inserts a block of text into a file at a specific line number.
+    """
+    try:
+        file_path = get_safe_path(project_path, filename)
+        if not os.path.exists(file_path):
+            return f"Error: File '{os.path.basename(filename)}' not found."
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # Line numbers are 1-based, list indices are 0-based
+        if not (1 <= line_number <= len(lines) + 1):
+            return f"Error: Line number {line_number} is out of bounds for file {os.path.basename(filename)} which has {len(lines)} lines."
+
+        # Ensure the content to insert ends with a newline if it doesn't already
+        if not content_to_insert.endswith('\n'):
+            content_to_insert += '\n'
+
+        lines.insert(line_number - 1, content_to_insert)
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+
+        return f"Successfully inserted content into {os.path.basename(filename)} at line {line_number}."
+    except Exception as e:
+        return f"Error during insert operation in '{filename}': {e}"
+
 # --- New Lint and Format Tools ---
 def lint_file_tool(project_path: str, filename: str) -> str:
     """
@@ -433,6 +487,8 @@ class ToolRegistry:
             "lint_file": lint_file_tool, # New
             "format_file": format_file_tool, # New
             "run_tests": run_tests, # New
+            "search_and_replace": search_and_replace, # New
+            "insert_at_line": insert_at_line, # New
         }
 
     def get_tool(self, name: str):
@@ -451,6 +507,8 @@ class ToolRegistry:
             "- delete_file(filename: str): Delete a file.\n"
             "- find_line_numbers(filename: str, keyword: str): Find all line numbers where a keyword appears in one file.\n"
             "- search_file_content(keyword: str): Search every file for a keyword (case-insensitive).\n"
+            "- search_and_replace(filename: str, search_query: str, replacement_text: str): Search for a string in a file and replace all occurrences with new text.\n"
+            "- insert_at_line(filename: str, line_number: int, content_to_insert: str): Insert a block of text into a file at a specific line number.\n"
             "- read_code_chunk(filename: str, start_line: int, line_count: int = 50): "
             "Return <line_count> lines of code starting at <start_line>.\n"
             "- apply_diff(filename: str, diff_content: str): Apply a unified-diff patch to a file. (Currently a placeholder, use read/save_file)\n" # Updated apply_diff description
