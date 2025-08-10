@@ -5,16 +5,9 @@ import ast
 from pathlib import Path
 from typing import Dict, List, Any
 import subprocess
-#from pathlib import Path # Duplicate import removed
 from werkzeug.utils import secure_filename
-import time # For create_subtask, already present
-import requests # For new lint/format tools
-import json # For new lint/format tools
-import tempfile # For new lint/format tools, though not used in final version of them
-
-BASE_DIR = Path(__file__).resolve().parent  # root of the workspace
-
-FLASK_APP_URL = "http://localhost:5001" # Used by new tools
+import time
+from code_utils import _internal_lint_code, _internal_format_code # Import new functions
 
 def get_safe_path(project_path, filename):
     """Ensures file paths are safe, sanitized, and within the project directory."""
@@ -22,16 +15,9 @@ def get_safe_path(project_path, filename):
         raise Exception("No active project selected")
 
     safe_filename = secure_filename(filename)
-    if not safe_filename: # handle cases where secure_filename might return an empty string
-        # Attempt to use original filename if it's simple and relative
-        # This is a basic check; more robust validation might be needed depending on expected inputs
+    if not safe_filename:
         if Path(filename).is_absolute() or ".." in Path(filename).parts:
              raise Exception("Invalid or potentially unsafe filename provided")
-        # If filename seems okay (e.g. "main.py", "src/test.py"), use it cautiously
-        # This part assumes 'filename' itself has been somewhat vetted if secure_filename fails
-        # For maximum safety, one might choose to reject if secure_filename doesn't like it.
-        # However, secure_filename can be too aggressive for valid relative paths with subdirs.
-        # We rely on the os.path.join and subsequent startswith check for main security.
         safe_filename = filename
 
     file_path = os.path.join(project_path, safe_filename)
@@ -146,12 +132,12 @@ def generate_code_map(project_path: str, *args, **kwargs) -> str:
 
 def save_file(project_path: str, filename: str, content: str) -> str:
     try:
-        file_path = get_safe_path(project_path, filename) # get_safe_path returns str
+        file_path = get_safe_path(project_path, filename)
         if len(content) > 10_000 or content.count('\n')/max(len(content),1) > 0.3:
             content = _compress_blank_lines(content)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
-        return f"Successfully saved file: {os.path.basename(filename)}" # Use original filename for user message
+        return f"Successfully saved file: {os.path.basename(filename)}"
     except Exception as e:
         return f"Error saving file '{filename}': {e}"
 
@@ -174,19 +160,14 @@ def create_subtask(project_path: str, description: str) -> str:
 
 def execute_python_file(project_path: str, filename: str, timeout: int = 10) -> str:
     try:
-        # Use get_safe_path to resolve the full path first
         full_safe_path = get_safe_path(project_path, filename)
-        # For subprocess, it's often better to use the relative path from project_path if cwd is project_path
         relative_filename = os.path.relpath(full_safe_path, project_path)
-
-        if not os.path.exists(full_safe_path): # Check existence using full path
+        if not os.path.exists(full_safe_path):
             return f"Error: File '{filename}' not found."
-
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
-
         result = subprocess.run(
-            ['python', relative_filename], # Execute using relative_filename
+            ['python', relative_filename],
             capture_output=True, text=True, timeout=timeout,
             cwd=project_path, encoding='utf-8', env=env
         )
@@ -198,7 +179,6 @@ def execute_python_file(project_path: str, filename: str, timeout: int = 10) -> 
 
 def list_files(project_path: str) -> str:
     try:
-        # Ensure project_path is a directory
         if not os.path.isdir(project_path):
             return "Error: Project path is not a valid directory."
         files = [f for f in os.listdir(project_path) if os.path.isfile(os.path.join(project_path, f))]
@@ -216,7 +196,7 @@ def read_file(project_path: str, filename: str) -> str:
         return f"Error reading file '{filename}': {e}"
 
 def finish(project_path: str, reason: str) -> None:
-    return None # Explicitly return None, though Python does this by default
+    return None
 
 def find_line_numbers(project_path: str, filename: str, keyword: str) -> str:
     try:
@@ -285,26 +265,22 @@ def run_tests(project_path: str, timeout: int = 60) -> str:
 
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
-
         result = subprocess.run(
-            ['pytest'],
+            ['python', '-m', 'pytest'],
             capture_output=True, text=True, timeout=timeout,
             cwd=project_path, encoding='utf-8', env=env
         )
-
         output = f"Exit Code: {result.returncode}\n"
         if result.stdout:
             output += f"--- Test Output (stdout) ---\n{result.stdout}\n"
         if result.stderr:
             output += f"--- Test Errors (stderr) ---\n{result.stderr}\n"
-
         if result.returncode == 0:
             return f"All tests passed.\n\n{output}"
         elif result.returncode == 1:
             return f"Tests failed.\n\n{output}"
         else:
             return f"Pytest exited with an unusual code. See output for details.\n\n{output}"
-
     except FileNotFoundError:
         return "Error: `pytest` command not found. Please ensure pytest is installed in the environment."
     except subprocess.TimeoutExpired:
@@ -321,18 +297,13 @@ def search_and_replace(project_path: str, filename: str, search_query: str, repl
         file_path = get_safe_path(project_path, filename)
         if not os.path.exists(file_path):
             return f"Error: File '{os.path.basename(filename)}' not found."
-
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-
         if search_query not in content:
             return f"Error: Search query '{search_query}' not found in {os.path.basename(filename)}."
-
         new_content = content.replace(search_query, replacement_text)
-
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
-
         return f"Successfully replaced '{search_query}' with '{replacement_text}' in {os.path.basename(filename)}."
     except Exception as e:
         return f"Error during search and replace in '{filename}': {e}"
@@ -345,67 +316,36 @@ def insert_at_line(project_path: str, filename: str, line_number: int, content_t
         file_path = get_safe_path(project_path, filename)
         if not os.path.exists(file_path):
             return f"Error: File '{os.path.basename(filename)}' not found."
-
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-
-        # Line numbers are 1-based, list indices are 0-based
         if not (1 <= line_number <= len(lines) + 1):
             return f"Error: Line number {line_number} is out of bounds for file {os.path.basename(filename)} which has {len(lines)} lines."
-
-        # Ensure the content to insert ends with a newline if it doesn't already
         if not content_to_insert.endswith('\n'):
             content_to_insert += '\n'
-
         lines.insert(line_number - 1, content_to_insert)
-
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(lines)
-
         return f"Successfully inserted content into {os.path.basename(filename)} at line {line_number}."
     except Exception as e:
         return f"Error during insert operation in '{filename}': {e}"
 
-# --- New Lint and Format Tools ---
 def lint_file_tool(project_path: str, filename: str) -> str:
     """
-    Lints a specified Python file using the backend /api/lint_code endpoint.
+    Lints a specified Python file.
     Returns a summary of linting issues or a success message.
-    Requires the main Flask app to be running.
     """
     try:
-        target_file_path_str = get_safe_path(project_path, filename) # get_safe_path returns str
-        target_file_path = Path(target_file_path_str)
-
-        if not target_file_path.name.endswith(".py"):
+        target_file_path = get_safe_path(project_path, filename)
+        if not Path(target_file_path).name.endswith(".py"):
             return "Error: Linting is only supported for Python files (.py)."
-        if not target_file_path.exists():
+        if not os.path.exists(target_file_path):
             return f"Error: File '{filename}' not found for linting."
-
-        code_content = target_file_path.read_text(encoding='utf-8')
-
+        with open(target_file_path, 'r', encoding='utf-8') as f:
+            code_content = f.read()
         if not code_content.strip():
             return f"File '{filename}' is empty. No linting needed."
 
-        # This tool makes an HTTP request to its own Flask application.
-        # Ensure the session context is correctly handled if the endpoint relies on it.
-        # For this specific endpoint, project_path is implicitly available via session in package_manager.py
-        # However, this tool doesn't run in a request context with that session.
-        # This is a known limitation. The agent would need to ensure session is set if calling this.
-        # A better long-term solution would be to refactor lint_code to be callable internally.
-
-        # For now, we assume the agent has set a session or the endpoint can work without it for this tool.
-        # This is a simplification. The `project_path` parameter here is mostly for path safety.
-
-        # Construct payload for the API
-        payload = {'code': code_content}
-        # The API endpoint in package_manager.py doesn't explicitly use project_path from payload,
-        # it uses it from session for temp file creation. We rely on current_app context there.
-
-        response = requests.post(f"{FLASK_APP_URL}/api/lint_code", json=payload)
-        response.raise_for_status()
-
-        result = response.json()
+        result = _internal_lint_code(code_content)
 
         if result.get("success"):
             issues = result.get("issues", [])
@@ -418,51 +358,38 @@ def lint_file_tool(project_path: str, filename: str) -> str:
                 return "\n".join(summary)
         else:
             return f"Error linting file '{filename}': {result.get('error', 'Unknown linting error')}. Details: {result.get('details', '')}"
-
-    except requests.exceptions.RequestException as req_e:
-        return f"Error calling linting API for '{filename}': {req_e}. Ensure the Cortex IDE server is running at {FLASK_APP_URL}."
     except Exception as e:
         return f"Error during lint_file_tool for '{filename}': {str(e)}"
 
 def format_file_tool(project_path: str, filename: str) -> str:
     """
-    Formats a specified Python file using the backend /api/format_code endpoint.
-    The file is overwritten with the formatted code.
-    Returns a success or error message. Requires the main Flask app to be running.
+    Formats a specified Python file using Black and overwrites it.
+    Returns a success or error message.
     """
     try:
-        target_file_path_str = get_safe_path(project_path, filename)
-        target_file_path = Path(target_file_path_str)
-
-        if not target_file_path.name.endswith(".py"):
+        target_file_path = get_safe_path(project_path, filename)
+        if not Path(target_file_path).name.endswith(".py"):
             return "Error: Formatting is only supported for Python files (.py)."
-        if not target_file_path.exists():
+        if not os.path.exists(target_file_path):
             return f"Error: File '{filename}' not found for formatting."
 
-        original_content = target_file_path.read_text(encoding='utf-8')
-
+        with open(target_file_path, 'r', encoding='utf-8') as f:
+            original_content = f.read()
         if not original_content.strip():
             return f"File '{filename}' is empty. No formatting needed."
 
-        payload = {'code': original_content}
-        response = requests.post(f"{FLASK_APP_URL}/api/format_code", json=payload)
-        response.raise_for_status()
-
-        result = response.json()
+        result = _internal_format_code(original_content)
 
         if result.get("success"):
             formatted_content = result.get("formatted_code")
             if formatted_content != original_content:
-                # Save the formatted content back to the file
-                target_file_path.write_text(formatted_content, encoding='utf-8')
+                with open(target_file_path, 'w', encoding='utf-8') as f:
+                    f.write(formatted_content)
                 return f"File '{filename}' formatted successfully."
             else:
                 return f"File '{filename}' is already correctly formatted."
         else:
             return f"Error formatting file '{filename}': {result.get('error', 'Unknown formatting error')}. Details: {result.get('details', '')}"
-
-    except requests.exceptions.RequestException as req_e:
-        return f"Error calling formatting API for '{filename}': {req_e}. Ensure the Cortex IDE server is running at {FLASK_APP_URL}."
     except Exception as e:
         return f"Error during format_file_tool for '{filename}': {str(e)}"
 
@@ -484,11 +411,11 @@ class ToolRegistry:
             "generate_code_map": generate_code_map,
             "replan": replan,
             "create_subtask": create_subtask,
-            "lint_file": lint_file_tool, # New
-            "format_file": format_file_tool, # New
-            "run_tests": run_tests, # New
-            "search_and_replace": search_and_replace, # New
-            "insert_at_line": insert_at_line, # New
+            "lint_file": lint_file_tool,
+            "format_file": format_file_tool,
+            "run_tests": run_tests,
+            "search_and_replace": search_and_replace,
+            "insert_at_line": insert_at_line,
         }
 
     def get_tool(self, name: str):
@@ -502,18 +429,16 @@ class ToolRegistry:
             "- save_file(filename: str, content: str): Create or overwrite a file.\n"
             "- list_files(): List every file in the current project.\n"
             "- read_file(filename: str): Return the full contents of a file.\n"
-            "- execute_python_file(filename: str, timeout: int = 10): Run a Python script with a timeout (default 10s). The script will be terminated if it runs longer.\n"
+            "- execute_python_file(filename: str, timeout: int = 10): Run a Python script with a timeout (default 10s).\n"
             "- run_tests(): Runs the pytest test suite for the project and returns the results.\n"
             "- delete_file(filename: str): Delete a file.\n"
             "- find_line_numbers(filename: str, keyword: str): Find all line numbers where a keyword appears in one file.\n"
             "- search_file_content(keyword: str): Search every file for a keyword (case-insensitive).\n"
-            "- search_and_replace(filename: str, search_query: str, replacement_text: str): Search for a string in a file and replace all occurrences with new text.\n"
+            "- search_and_replace(filename: str, search_query: str, replacement_text: str): Search for a string in a file and replace all occurrences.\n"
             "- insert_at_line(filename: str, line_number: int, content_to_insert: str): Insert a block of text into a file at a specific line number.\n"
-            "- read_code_chunk(filename: str, start_line: int, line_count: int = 50): "
-            "Return <line_count> lines of code starting at <start_line>.\n"
-            "- apply_diff(filename: str, diff_content: str): Apply a unified-diff patch to a file. (Currently a placeholder, use read/save_file)\n" # Updated apply_diff description
-            "- lint_file(filename: str): Lints the specified Python file and reports issues.\n" # New
-            "- format_file(filename: str): Formats the specified Python file using Black and overwrites it.\n" # New
+            "- read_code_chunk(filename: str, start_line: int, line_count: int = 50): Return a chunk of code from a file.\n"
+            "- lint_file(filename: str): Lints the specified Python file and reports issues.\n"
+            "- format_file(filename: str): Formats the specified Python file using Black and overwrites it.\n"
             "- finish(reason: str): Call when the entire objective is complete.\n"
             "- replan(reason: str): Tell the orchestrator the current plan failed and request a new one.\n"
             "- create_subtask(description: str): Spawn a follow-up task for work that should be done later.\n"
