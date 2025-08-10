@@ -1,15 +1,26 @@
 import chromadb
 import uuid
+import re
 
 class MemoryManager:
     def __init__(self, project_path):
         """
         Initializes the MemoryManager for a specific project.
         """
-        # Each project will have its own ChromaDB collection.
-        # The database itself is stored in a persistent directory.
         self.client = chromadb.PersistentClient(path="./cortex_memory")
-        self.collection_name = f"project_{project_path.replace('/', '_').replace(' ', '_')}"
+
+        # Sanitize the project_path to create a valid collection name
+        # ChromaDB requires names to be 3-63 chars, start/end with alphanum, and only contain alphanum, _, -
+        sanitized_path = re.sub(r'[^a-zA-Z0-9._-]', '_', project_path)
+        # Ensure the name is not too long and doesn't start/end with invalid chars
+        if len(sanitized_path) > 50:
+            sanitized_path = sanitized_path[:50]
+        if sanitized_path.startswith(('_', '.', '-')):
+            sanitized_path = 'p' + sanitized_path[1:]
+        if sanitized_path.endswith(('_', '.', '-')):
+            sanitized_path = sanitized_path[:-1] + 'p'
+
+        self.collection_name = f"project_{sanitized_path}"
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
 
     def add_memory(self, text_content: str, metadata: dict = None):
@@ -19,7 +30,6 @@ class MemoryManager:
         if not text_content:
             return
 
-        # ChromaDB requires a unique ID for each entry.
         doc_id = str(uuid.uuid4())
 
         self.collection.add(
@@ -41,25 +51,21 @@ class MemoryManager:
             n_results=n_results
         )
 
-        # The query returns a list of lists, one for each query text.
-        # Since we only have one query, we take the first element.
         return results['documents'][0] if results and results['documents'] else []
 
 # Example Usage (for testing purposes)
 if __name__ == '__main__':
-    # This would be run in the context of a project
     project_memory = MemoryManager(project_path="workspaces/sample_project")
+    project_memory_win = MemoryManager(project_path="workspaces\\sample_project_win")
 
-    # Example of adding memories
-    project_memory.add_memory("The agent successfully refactored the database connection string in `config.py`.", metadata={"source": "task_123"})
-    project_memory.add_memory("A common error when installing `numpy` on this system is a missing BLAS library.", metadata={"source": "task_456"})
-    project_memory.add_memory("The user prefers functions to be documented using Google-style docstrings.", metadata={"source": "conversation_789"})
+    print(f"Unix-style path collection name: {project_memory.collection_name}")
+    print(f"Windows-style path collection name: {project_memory_win.collection_name}")
 
-    # Example of searching memories
-    search_query = "How should I document a new function?"
-    relevant_memories = project_memory.search_memories(search_query)
+    project_memory.add_memory("Test memory for unix path.")
+    project_memory_win.add_memory("Test memory for windows path.")
 
-    print(f"Query: '{search_query}'")
-    print("Found relevant memories:")
-    for memory in relevant_memories:
-        print(f"- {memory}")
+    print("\nSearching for 'unix':")
+    print(project_memory.search_memories("unix"))
+
+    print("\nSearching for 'windows':")
+    print(project_memory_win.search_memories("windows"))
