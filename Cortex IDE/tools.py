@@ -7,7 +7,10 @@ from typing import Dict, List, Any
 import subprocess
 from werkzeug.utils import secure_filename
 import time
-from code_utils import _internal_lint_code, _internal_format_code # Import new functions
+from code_utils import _internal_lint_code, _internal_format_code
+import requests
+from bs4 import BeautifulSoup
+from googlesearch import search
 
 def get_safe_path(project_path, filename):
     """Ensures file paths are safe, sanitized, and within the project directory."""
@@ -27,6 +30,46 @@ def get_safe_path(project_path, filename):
         raise PermissionError("Access denied: File path is outside of the project directory.")
 
     return normalized_path
+
+def google_search(project_path: str, query: str, num_results: int = 8) -> str:
+    """
+    Performs a Google search for the given query and returns the top results.
+    """
+    try:
+        results = []
+        for j in search(query, num_results=num_results):
+            results.append(j)
+
+        if not results:
+            return "No results found."
+
+        return "\n".join(results)
+    except Exception as e:
+        return f"Error performing Google search: {e}"
+
+def view_text_website(project_path: str, url: str) -> str:
+    """
+    Fetches the content of a website and returns it as plain text.
+    """
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Remove script and style elements
+        for script_or_style in soup(["script", "style"]):
+            script_or_style.decompose()
+
+        text = soup.get_text()
+
+        # Clean up text
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+
+        return text
+    except requests.exceptions.RequestException as e:
+        return f"Error fetching website: {e}"
 
 def _compress_blank_lines(text: str, max_run: int = 2) -> str:
     """
@@ -416,6 +459,8 @@ class ToolRegistry:
             "run_tests": run_tests,
             "search_and_replace": search_and_replace,
             "insert_at_line": insert_at_line,
+            "google_search": google_search,
+            "view_text_website": view_text_website,
         }
 
     def get_tool(self, name: str):
@@ -439,6 +484,8 @@ class ToolRegistry:
             "- read_code_chunk(filename: str, start_line: int, line_count: int = 50): Return a chunk of code from a file.\n"
             "- lint_file(filename: str): Lints the specified Python file and reports issues.\n"
             "- format_file(filename: str): Formats the specified Python file using Black and overwrites it.\n"
+            "- google_search(query: str, num_results: int = 8): Performs a Google search and returns the top results.\n"
+            "- view_text_website(url: str): Fetches the content of a website as plain text.\n"
             "- finish(reason: str): Call when the entire objective is complete.\n"
             "- replan(reason: str): Tell the orchestrator the current plan failed and request a new one.\n"
             "- create_subtask(description: str): Spawn a follow-up task for work that should be done later.\n"
