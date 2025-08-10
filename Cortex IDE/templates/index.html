@@ -31,24 +31,20 @@
 
     <div id="app-container">
         <div id="file-tree-panel" class="panel">
-            <div id="file-tree-panel" class="panel">
-                <div class="panel-header">
-                    <span>Project Files</span>
+            <div class="panel-header">
+                <span>Project Files</span>
+                <div class="header-icons">
+                    <button id="add-file-btn" class="icon-btn" title="New File">+ File</button>
+                    <button id="add-folder-btn" class="icon-btn" title="New Folder">+ Folder</button>
                     <button id="download-project-btn" title="Download Project as .zip" style="display: none;">↓</button>
                 </div>
-                <form id="create-file-form">
-                    <input id="new-filename-input" type="text" placeholder="new-file.py" required autocomplete="off">
-                    <button type="submit">Create File</button>
-                </form>
-                <!-- ADD THE FORM BELOW -->
-                <form id="create-folder-form">
-                    <input id="new-folder-input" type="text" placeholder="new-folder" required autocomplete="off">
-                    <button type="submit">Create Folder</button>
+            </div>
+            <div class="panel-content">
+                <form id="create-item-form" style="display: none;">
+                    <input id="new-item-input" type="text" required autocomplete="off">
                 </form>
                 <button id="install-deps-btn" class="action-button" title="Install packages from requirements.txt">Install Dependencies</button>
-                <div class="panel-content">
-                    <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
-                </div>
+                <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
             </div>
         </div>
         <div id="main-panel" class="panel">
