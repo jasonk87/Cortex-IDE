@@ -1,71 +1,45 @@
 import chromadb
-import uuid
-import re
+from chromadb.utils import embedding_functions
+import os
 
 class MemoryManager:
     def __init__(self, project_path):
-        """
-        Initializes the MemoryManager for a specific project.
-        """
-        self.client = chromadb.PersistentClient(path="./cortex_memory")
+        self.db_path = os.path.join(project_path, ".cortex_memory")
+        self.client = chromadb.PersistentClient(path=self.db_path)
 
-        # Sanitize the project_path to create a valid collection name
-        # ChromaDB requires names to be 3-63 chars, start/end with alphanum, and only contain alphanum, _, -
-        sanitized_path = re.sub(r'[^a-zA-Z0-9._-]', '_', project_path)
-        # Ensure the name is not too long and doesn't start/end with invalid chars
-        if len(sanitized_path) > 50:
-            sanitized_path = sanitized_path[:50]
-        if sanitized_path.startswith(('_', '.', '-')):
-            sanitized_path = 'p' + sanitized_path[1:]
-        if sanitized_path.endswith(('_', '.', '-')):
-            sanitized_path = sanitized_path[:-1] + 'p'
+        # Using the SentenceTransformer a a more reliable embedding function
+        # This avoids the onnxruntime dependency that causes issues on Windows.
+        # The model name is the same as the default, so behavior is consistent.
+        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="all-MiniLM-L6-v2"
+        )
 
-        self.collection_name = f"project_{sanitized_path}"
-        self.collection = self.client.get_or_create_collection(name=self.collection_name)
+        self.collection = self.client.get_or_create_collection(
+            name="project_memories",
+            embedding_function=self.embedding_function
+        )
 
-    def add_memory(self, text_content: str, metadata: dict = None):
-        """
-        Adds a new memory (e.g., a summary of a successful task) to the collection.
-        """
-        if not text_content:
+    def add_memory(self, text: str):
+        """Adds a new memory to the collection."""
+        # Use a hash of the text as a simple, deterministic ID
+        import hashlib
+        doc_id = hashlib.sha256(text.encode()).hexdigest()
+
+        # Check if a document with this ID already exists
+        if self.collection.get(ids=[doc_id])['ids']:
+            # If it exists, you might want to update it or just skip adding.
+            # For simplicity, we'll skip.
             return
 
-        doc_id = str(uuid.uuid4())
-
         self.collection.add(
-            documents=[text_content],
-            metadatas=[metadata] if metadata else None,
+            documents=[text],
             ids=[doc_id]
         )
-        print(f"Added memory to collection '{self.collection_name}'.")
 
-    def search_memories(self, query_text: str, n_results: int = 3) -> list:
-        """
-        Searches for memories relevant to a given query text.
-        """
-        if not query_text:
-            return []
-
+    def search_memories(self, query: str, n_results: int = 5):
+        """Searches for memories similar to the query."""
         results = self.collection.query(
-            query_texts=[query_text],
+            query_texts=[query],
             n_results=n_results
         )
-
         return results['documents'][0] if results and results['documents'] else []
-
-# Example Usage (for testing purposes)
-if __name__ == '__main__':
-    project_memory = MemoryManager(project_path="workspaces/sample_project")
-    project_memory_win = MemoryManager(project_path="workspaces\\sample_project_win")
-
-    print(f"Unix-style path collection name: {project_memory.collection_name}")
-    print(f"Windows-style path collection name: {project_memory_win.collection_name}")
-
-    project_memory.add_memory("Test memory for unix path.")
-    project_memory_win.add_memory("Test memory for windows path.")
-
-    print("\nSearching for 'unix':")
-    print(project_memory.search_memories("unix"))
-
-    print("\nSearching for 'windows':")
-    print(project_memory_win.search_memories("windows"))

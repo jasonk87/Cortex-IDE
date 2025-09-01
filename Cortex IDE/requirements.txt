@@ -5,4 +5,4 @@ requests
 pytest
 pytest-flask
 Flask-SocketIO
-onnxruntime
+sentence-transformers
