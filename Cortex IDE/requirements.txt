@@ -2,3 +2,6 @@ chromadb
 googlesearch-python
 beautifulsoup4
 requests
+pytest
+pytest-flask
+Flask-SocketIO
