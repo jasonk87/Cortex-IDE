@@ -7,10 +7,43 @@ from typing import Dict, List, Any
 import subprocess
 from werkzeug.utils import secure_filename
 import time
+from datetime import datetime
+import shutil
+import zipfile
 from code_utils import _internal_lint_code, _internal_format_code
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
+
+def create_backup(project_path: str, *args, **kwargs) -> str:
+    """
+    Creates a zip backup of the project.
+    The backup is stored in a .backups directory within the project,
+    and the .backups directory itself is excluded from the archive.
+    """
+    try:
+        backup_dir = os.path.join(project_path, ".backups")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"backup_{timestamp}.zip"
+        backup_filepath = os.path.join(backup_dir, backup_filename)
+
+        with zipfile.ZipFile(backup_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(project_path):
+                # Exclude the .backups directory itself from being walked
+                if '.backups' in dirs:
+                    dirs.remove('.backups')
+
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # The arcname is the path inside the zip file
+                    arcname = os.path.relpath(file_path, project_path)
+                    zipf.write(file_path, arcname)
+
+        return f"Successfully created backup: {backup_filename}"
+    except Exception as e:
+        return f"Error creating backup: {e}"
 
 def get_safe_path(project_path, filename):
     """Ensures file paths are safe, sanitized, and within the project directory."""
@@ -440,6 +473,7 @@ class ToolRegistry:
     """A registry to hold and manage the agent's tools."""
     def __init__(self, project_path: str):
         self._tools = {
+            "create_backup": create_backup,
             "echo": echo,
             "save_file": save_file,
             "execute_python_file": execute_python_file,

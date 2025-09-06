@@ -1,8 +1,8 @@
-# agent.py
 import json
 import re
 import requests
 import time
+import threading
 from tools import ToolRegistry, generate_code_map
 import os
 import ast
@@ -80,6 +80,16 @@ class Agent:
         print(f"Agent Log: {message}")
         self.log_history.append(message)
         self.emit('agent_log', {'message': message})
+
+        # Add file-based logging for debugging
+        try:
+            # Writing to a project-relative path
+            log_path = os.path.join(os.path.dirname(__file__), 'agent_debug.log')
+            with open(log_path, "a") as f:
+                f.write(f"{time.time()} - {message}\n")
+        except Exception as e:
+            print(f"Failed to write to debug log: {e}")
+
         time.sleep(0.5)
 
     def stop(self):
@@ -92,6 +102,14 @@ class Agent:
         self.conversation_history.append({"role": "user", "content": objective})
 
         try:
+            # Phase 0: Create a backup before starting
+            self.log("Phase 0: Creating project backup...")
+            backup_result = self._execute_tool({
+                "tool_name": "create_backup",
+                "arguments": {}
+            })
+            self.log(backup_result)
+
             self.log("Phase 1: Creating a high-level plan...")
             plan = self._create_high_level_plan()
             if not plan:

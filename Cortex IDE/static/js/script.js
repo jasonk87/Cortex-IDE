@@ -9,7 +9,7 @@ io.opts = {
 document.addEventListener('DOMContentLoaded', () => {
     const editorTextarea = document.getElementById('editor-textarea');
     const downloadProjectBtn = document.getElementById('download-project-btn');
-    let socket = null;
+    window.socket = null; // Expose socket to global scope for testing
     const projectForm = document.getElementById('project-form');
     const projectNameInput = document.getElementById('project-name-input');
     const chatForm = document.getElementById('chat-form');
@@ -221,16 +221,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openSocket(projectPath) {
-        socket = io();
+        window.socket = io();
 
-        socket.on('connect', () => {
-            console.log('[Socket] connected:', socket.id);
-            socket.emit('join_project_room', { project_path: projectPath });
+        window.socket.on('connect', () => {
+            console.log('[Socket] connected:', window.socket.id);
+            window.socket.emit('join_project_room', { project_path: projectPath });
 
             setupSocketListeners();
         });
 
-        socket.on('file_system_updated', (data) => {
+        window.socket.on('file_system_updated', (data) => {
             console.log(`File system update received for: ${data.filename}`);
             updateFileTree();
             if (currentPath && currentPath === data.filename) {
@@ -238,8 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        socket.io.on('error',  err => console.error('[Socket] error',  err));
-        socket.io.on('reconnect_error', err => console.error('[Socket] reconnect_error', err));
+        window.socket.io.on('error',  err => console.error('[Socket] error',  err));
+        window.socket.io.on('reconnect_error', err => console.error('[Socket] reconnect_error', err));
     }
 
     function createTreeHtml(nodes) {
@@ -467,9 +467,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupSocketListeners() {
-        socket.onAny((event, ...args) => console.log(`[Socket ►] ${event}`, args));
+        window.socket.onAny((event, ...args) => console.log(`[Socket ►] ${event}`, args));
 
-        socket.on('agent_plan_created', (data) => {
+        window.socket.on('agent_plan_created', (data) => {
             const old = logContent.querySelector('.plan-container');
             if (old) old.remove();
             const wrapper = document.createElement('div');
@@ -493,14 +493,14 @@ document.addEventListener('DOMContentLoaded', () => {
             autoScrollLogIfAtBottom();
         });
 
-        socket.on('agent_thinking', () => {
+        window.socket.on('agent_thinking', () => {
             const body = createLogEntry('Agent thinking…', 'thought', true, true);
             const pre  = document.createElement('pre');
             body.appendChild(pre);
             currentStreamEntry = pre;
         });
 
-        socket.on('agent_stream_chunk', (data) => {
+        window.socket.on('agent_stream_chunk', (data) => {
             if (!currentStreamEntry) {
                 const body = createLogEntry('Agent Stream', 'thought', true, true);
                 const pre  = document.createElement('pre');
@@ -511,29 +511,29 @@ document.addEventListener('DOMContentLoaded', () => {
             autoScrollLogIfAtBottom();
         });
 
-        socket.on('agent_log', (data) => createLogEntry(`${data.message}`, 'info'));
+        window.socket.on('agent_log', (data) => createLogEntry(`${data.message}`, 'info'));
 
-        socket.on('agent_exec_result', (data) => {
+        window.socket.on('agent_exec_result', (data) => {
             const entry = createLogEntry(`Exec exit ${data.exit_code}`, data.exit_code === 0 ? 'success' : 'error', true, false);
             const pre = document.createElement('pre');
             pre.textContent = (data.stdout || '') + (data.stderr || '');
             entry.appendChild(pre);
         });
 
-        socket.on('task_finished', () => {
+        window.socket.on('task_finished', () => {
             createLogEntry('Task finished', 'success');
             currentStreamEntry = null;
             setAgentRunningState(false);
         });
 
-        socket.on('packages_installed', (data) => {
+        window.socket.on('packages_installed', (data) => {
             const body = createLogEntry('Packages installed via background process.', 'success', true, false);
             const pre = document.createElement('pre');
             pre.textContent = (data.stdout || '') + '\n' + (data.stderr || '');
             body.appendChild(pre);
         });
 
-        socket.on('installation_failed', (data) => {
+        window.socket.on('installation_failed', (data) => {
             const body = createLogEntry(`Package installation failed via background process: ${data.message}`, 'error', true, false);
             if (data.stdout || data.stderr || data.exit_code !== undefined) {
                 const pre = document.createElement('pre');
@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        socket.on('debug_message', (data) => {
+        window.socket.on('debug_message', (data) => {
             console.log('[Socket DEBUG]', data.message, data.stdout || '', data.stderr || '');
         });
     }
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (isAgentRunning) {
-            socket.emit('stop_agent');
+            window.socket.emit('stop_agent');
             createLogEntry('Stop signal sent to agent...', 'user');
             return;
         }
@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!message) return;
         createLogEntry(message, 'user');
         setAgentRunningState(true);
-        socket.emit('agent_chat', { message: message }, (response) => {
+        window.socket.emit('agent_chat', { message: message }, (response) => {
             if (response && response.error) {
                 createLogEntry(`Error: ${response.error}`, 'error');
                 setAgentRunningState(false);
