@@ -30,6 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const createItemForm = document.getElementById('create-item-form');
     const newItemInput = document.getElementById('new-item-input');
 
+    // Modal and Spinner elements
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const modalText = document.getElementById('modal-text');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const agentSpinner = document.getElementById('agent-spinner');
+
     let currentPath = null;
     let isAgentRunning = false;
     let codeRunnerState = 'idle';
@@ -335,6 +342,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function showDeleteConfirmationModal(path, type) {
+        const itemType = type === 'file' ? 'file' : 'folder';
+        const message = `Are you sure you want to delete the ${itemType}: ${path}?`;
+        modalText.textContent = message;
+
+        // Clone and replace the button to remove old event listeners
+        const newConfirmBtn = modalConfirmBtn.cloneNode(true);
+        modalConfirmBtn.parentNode.replaceChild(newConfirmBtn, modalConfirmBtn);
+
+        // Update reference to the new button
+        const modalConfirmBtnRef = document.getElementById('modal-confirm-btn');
+
+        const confirmHandler = () => {
+            if (type === 'file') {
+                deleteFile(path);
+            } else {
+                deleteFolder(path);
+            }
+            confirmationModal.style.display = 'none';
+        };
+
+        modalConfirmBtnRef.addEventListener('click', confirmHandler, { once: true });
+
+        const cancelHandler = () => {
+            confirmationModal.style.display = 'none';
+            // Clean up the confirm handler to be safe
+            modalConfirmBtnRef.removeEventListener('click', confirmHandler);
+        };
+
+        modalCancelBtn.addEventListener('click', cancelHandler, { once: true });
+
+        confirmationModal.style.display = 'flex';
+    }
+
     async function stopCode() {
         try {
             const response = await fetch('/api/stop_code', { method: 'POST' });
@@ -372,6 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function setAgentRunningState(isRunning) {
         isAgentRunning = isRunning;
         chatInput.disabled = isRunning;
+        agentSpinner.style.display = isRunning ? 'block' : 'none'; // Control spinner
+
         if (isRunning) {
             chatSendBtn.textContent = 'Stop';
             chatSendBtn.classList.add('btn-stop');
@@ -605,13 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (target.tagName === 'A') {
             getFileContent(path);
         } else if (target.classList.contains('delete-file-btn')) {
-            if (confirm(`Are you sure you want to delete file: ${path}?`)) {
-                deleteFile(path);
-            }
+            showDeleteConfirmationModal(path, 'file');
         } else if (target.classList.contains('delete-folder-btn')) {
-            if (confirm(`DELETE FOLDER? This will also delete all files and subfolders inside: ${path}`)) {
-                deleteFolder(path);
-            }
+            showDeleteConfirmationModal(path, 'folder');
         }
     });
 
