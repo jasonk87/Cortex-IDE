@@ -9,8 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.css"> <!-- New -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
@@ -34,27 +33,35 @@
     </form>
 
     <div id="app-container">
-        <div id="file-tree-panel" class="panel">
-            <div class="panel-header">
-                <span>Project Files</span>
-                <div class="header-icons">
-                    <button id="add-file-btn" class="icon-btn" title="New File">+ File</button>
-                    <button id="add-folder-btn" class="icon-btn" title="New Folder">+ Folder</button>
-                    <button id="download-project-btn" title="Download Project as .zip" style="display: none;">↓</button>
+        <div id="side-panel" class="panel">
+            <div class="side-panel-tabs">
+                <button id="files-tab-btn" class="tab-btn active">Files</button>
+                <button id="agent-tab-btn" class="tab-btn">Agent</button>
+            </div>
+            <div class="side-panel-content">
+                <div id="file-tree-content" class="tab-content active">
+                    <div class="panel-header">
+                        <span>Project Files</span>
+                        <div class="header-icons">
+                            <button id="add-file-btn" class="icon-btn" title="New File">+ File</button>
+                            <button id="add-folder-btn" class="icon-btn" title="New Folder">+ Folder</button>
+                            <button id="download-project-btn" title="Download Project as .zip" style="display: none;">↓</button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <form id="create-item-form" style="display: none;">
+                            <input id="new-item-input" type="text" required autocomplete="off">
+                        </form>
+                        <button id="install-deps-btn" class="action-button" title="Install packages from requirements.txt">Install Dependencies</button>
+                        <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
+                    </div>
                 </div>
-            </div>
-            <div class="panel-content">
-                <form id="create-item-form" style="display: none;">
-                    <input id="new-item-input" type="text" required autocomplete="off">
-                </form>
-                <button id="install-deps-btn" class="action-button" title="Install packages from requirements.txt">Install Dependencies</button>
-                <ul id="file-tree-list"><li>Create a project to see files.</li></ul>
-            </div>
-        </div>
-        <div id="main-panel" class="panel">
-            <div class="panel-header">Agent Logs</div>
-            <div class="panel-content" id="log-content">
-                Welcome! Enter a project name above to begin.
+                <div id="agent-logs-content" class="tab-content">
+                    <div class="panel-header">Agent Logs</div>
+                    <div class="panel-content" id="log-content">
+                        Welcome! Enter a project name above to begin.
+                    </div>
+                </div>
             </div>
         </div>
         <div id="file-viewer-panel" class="panel">
@@ -84,11 +91,9 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script src="{{ url_for('static', filename='js/package_installer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/python_linter_addon.js') }}"></script>
     <script src="{{ url_for('static', filename='js/code_formatter_addon.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/autocomplete_addon.js') }}"></script>
 </body>
 </html>

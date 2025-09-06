@@ -78,9 +78,8 @@ h1 {
     flex-direction: column;
 }
 
-#file-tree-panel { flex: 0 0 250px; }
-#main-panel { flex: 1 1 50%; min-width: 0; }
-#file-viewer-panel { flex: 1 1 50%; display: flex; flex-direction: column; }
+#side-panel { flex: 0 0 300px; }
+#file-viewer-panel { flex: 1 1 auto; min-width: 0; }
 
 .panel-header {
     padding: 10px 15px;
@@ -200,7 +199,7 @@ h1 {
     word-break: break-all;
 }
 
-#main-panel .panel-content { /* Target the log panel's content area specifically */
+#agent-logs-content .panel-content { /* Target the log panel's content area specifically */
     overflow-y: auto;
     flex-grow: 1;
     display: flex;
@@ -701,4 +700,61 @@ li.directory:hover > .delete-folder-btn {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* --- NEW: Side Panel Tabs --- */
+.side-panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+    flex-grow: 1;
+    padding: 10px 15px;
+    background-color: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 2px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+}
+
+.side-panel-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.side-panel-content .panel-header {
+    /* The headers are now inside the tabs, so they shouldn't have a top border */
+    border-top: none;
+}
+
+.tab-content {
+    display: none; /* Hide inactive tabs */
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.tab-content.active {
+    display: flex; /* Show active tab */
+}
+
+/* The panel content inside the tabs needs to be scrollable */
+.tab-content > .panel-content {
+    overflow-y: auto;
+    flex-grow: 1;
 }
