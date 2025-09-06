@@ -37,13 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const agentSpinner = document.getElementById('agent-spinner');
 
-    // Tab UI elements
-    const sidePanelTabs = document.querySelector('.side-panel-tabs');
-    const filesTabBtn = document.getElementById('files-tab-btn');
-    const agentTabBtn = document.getElementById('agent-tab-btn');
-    const fileTreeContent = document.getElementById('file-tree-content');
-    const agentLogsContent = document.getElementById('agent-logs-content');
-
     let currentPath = null;
     let isAgentRunning = false;
     let codeRunnerState = 'idle';
@@ -53,7 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: "dracula",
         indentUnit: 4,
         gutters: ["CodeMirror-linenumbers", "CodeMirror-lint-markers"],
-        lint: { async: true, getAnnotations: pythonLinter, delay: 750 }
+        lint: { async: true, getAnnotations: pythonLinter, delay: 750 },
+        extraKeys: {
+            "Cmd-F": "find",
+            "Ctrl-F": "find"
+        }
     });
 
     const modeMap = { 'py': 'python', 'js': 'javascript', 'css': 'css', 'html': 'xml' };
@@ -667,24 +664,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     installDepsBtn.addEventListener('click', installDependencies);
     formatCodeBtn.addEventListener('click', formatCode);
-
-    sidePanelTabs.addEventListener('click', (e) => {
-        const clickedTab = e.target.closest('.tab-btn');
-        if (!clickedTab) return;
-
-        // Deactivate all tabs and content
-        filesTabBtn.classList.remove('active');
-        agentTabBtn.classList.remove('active');
-        fileTreeContent.classList.remove('active');
-        agentLogsContent.classList.remove('active');
-
-        // Activate the clicked tab and its content
-        if (clickedTab.id === 'files-tab-btn') {
-            filesTabBtn.classList.add('active');
-            fileTreeContent.classList.add('active');
-        } else if (clickedTab.id === 'agent-tab-btn') {
-            agentTabBtn.classList.add('active');
-            agentLogsContent.classList.add('active');
-        }
-    });
 });
