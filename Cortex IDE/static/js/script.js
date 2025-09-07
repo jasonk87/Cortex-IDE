@@ -49,6 +49,24 @@ document.addEventListener('DOMContentLoaded', () => {
         lint: { async: true, getAnnotations: pythonLinter, delay: 750 }
     });
 
+    // --- Tab Switching Logic ---
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = document.querySelector(tab.dataset.tabTarget);
+
+            tabContents.forEach(tc => tc.classList.remove('active'));
+            tabs.forEach(t => t.classList.remove('active'));
+
+            if (target) {
+                target.classList.add('active');
+            }
+            tab.classList.add('active');
+        });
+    });
+
     const modeMap = { 'py': 'python', 'js': 'javascript', 'css': 'css', 'html': 'xml' };
     let currentStreamElement = null;
 

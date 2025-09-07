@@ -63,7 +63,8 @@ h1 {
 }
 
 #app-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 300px 1fr; /* Side panel and main content */
     flex-grow: 1;
     gap: 15px;
     min-height: 0;
@@ -76,11 +77,59 @@ h1 {
     border-radius: 4px;
     display: flex;
     flex-direction: column;
+    min-height: 0; /* Prevents flex children from overflowing */
 }
 
-#file-tree-panel { flex: 0 0 250px; }
-#main-panel { flex: 1 1 50%; min-width: 0; }
-#file-viewer-panel { flex: 1 1 50%; display: flex; flex-direction: column; }
+/* The new side panel that will contain the tabs */
+#side-panel {
+    grid-column: 1 / 2;
+    overflow: hidden; /* Contains the tab content */
+}
+
+/* The file viewer takes the second column */
+#file-viewer-panel {
+    grid-column: 2 / 3;
+}
+
+/* Tab Bar Styling */
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+    padding: 10px 15px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    color: var(--text-main);
+    font-weight: bold;
+    font-size: 14px;
+    border-bottom: 2px solid transparent; /* For the active indicator */
+    margin-bottom: -1px; /* Overlaps the container border */
+}
+
+.tab-btn.active {
+    color: var(--cyan);
+    border-bottom-color: var(--cyan);
+}
+
+.tab-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tab Content Styling */
+.tab-content {
+    display: none; /* Hidden by default */
+    height: 100%;
+    overflow-y: auto;
+    flex-direction: column; /* Ensure content inside stacks vertically */
+}
+
+.tab-content.active {
+    display: flex; /* Show active tab content */
+}
+
 
 .panel-header {
     padding: 10px 15px;
@@ -200,12 +249,7 @@ h1 {
     word-break: break-all;
 }
 
-#main-panel .panel-content { /* Target the log panel's content area specifically */
-    overflow-y: auto;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column; /* This is the key for top-to-bottom layout */
-}
+/* #main-panel rule removed as it is obsolete */
 
 .terminal-output { padding: 15px; padding-top: 0; }
 
@@ -247,7 +291,7 @@ h1 {
     left: 20px;
     right: 20px;
     /* Adjust bottom to account for the input/button height and bottom padding */
-    bottom: 15px; 
+    bottom: 15px;
     border-radius: 4px;
     pointer-events: none; /* The overlay should not be clickable */
     animation: running-glow 2s infinite;
