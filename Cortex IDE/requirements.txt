@@ -5,4 +5,9 @@ requests
 pytest
 pytest-flask
 Flask-SocketIO
-sentence-transformers
+sentence-transformers==2.2.2
+transformers==4.36.2
+torch==2.2.0
+torchvision==0.17.0
+torchaudio==2.2.0
+jedi

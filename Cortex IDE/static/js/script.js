@@ -46,11 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: "dracula",
         indentUnit: 4,
         gutters: ["CodeMirror-linenumbers", "CodeMirror-lint-markers"],
-        lint: { async: true, getAnnotations: pythonLinter, delay: 750 },
-        extraKeys: {
-            "Cmd-F": "find",
-            "Ctrl-F": "find"
-        }
+        lint: { async: true, getAnnotations: pythonLinter, delay: 750 }
     });
 
     const modeMap = { 'py': 'python', 'js': 'javascript', 'css': 'css', 'html': 'xml' };
