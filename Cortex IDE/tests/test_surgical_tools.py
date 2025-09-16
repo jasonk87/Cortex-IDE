@@ -8,12 +8,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools import search_and_replace, insert_at_line, get_safe_path
 
+
 @pytest.fixture
 def temp_project(tmp_path):
     """Create a temporary project directory for testing."""
     project_path = tmp_path / "test_project"
     project_path.mkdir()
     return str(project_path)
+
 
 def test_search_and_replace_success(temp_project):
     """Tests successful search and replace operation."""
@@ -34,6 +36,7 @@ def test_search_and_replace_success(temp_project):
         content = f.read()
     assert content == "Hello universe, this is a test. The universe is great."
 
+
 def test_search_and_replace_not_found(temp_project):
     """Tests search and replace when the search query is not found."""
     filename = "test_file.txt"
@@ -50,6 +53,7 @@ def test_search_and_replace_not_found(temp_project):
     with open(file_path, "r") as f:
         content = f.read()
     assert content == initial_content
+
 
 def test_insert_at_line_middle(temp_project):
     """Tests inserting content in the middle of a file."""
@@ -68,6 +72,7 @@ def test_insert_at_line_middle(temp_project):
         content = f.read()
     assert content == "Line 1\nLine 2\nLine 3\n"
 
+
 def test_insert_at_line_start(temp_project):
     """Tests inserting content at the beginning of a file."""
     filename = "test_file.txt"
@@ -84,6 +89,7 @@ def test_insert_at_line_start(temp_project):
     with open(file_path, "r") as f:
         content = f.read()
     assert content == "Line 1\nLine 2\nLine 3\n"
+
 
 def test_insert_at_line_end(temp_project):
     """Tests inserting content at the end of a file."""
@@ -102,6 +108,7 @@ def test_insert_at_line_end(temp_project):
     with open(file_path, "r") as f:
         content = f.read()
     assert content == "Line 1\nLine 2\nLine 3\n"
+
 
 def test_insert_at_line_out_of_bounds(temp_project):
     """Tests inserting content at a line number that is out of bounds."""
