@@ -383,25 +383,6 @@ def read_code_chunk(
         return f"Error reading file chunk: {e}"
 
 
-def apply_diff(project_path: str, filename: str, diff_content: str) -> str:
-    """
-    Applies a diff patch to a file.
-    """
-    try:
-        file_path = get_safe_path(project_path, filename)
-        dmp = dmp_module.diff_match_patch()
-        with open(file_path, "r", encoding="utf-8") as f:
-            original_content = f.read()
-        patches = dmp.patch_fromText(diff_content)
-        new_content, results = dmp.patch_apply(patches, original_content)
-        if all(results):
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(new_content)
-            return f"Successfully applied diff to {filename}."
-        else:
-            return f"Error applying diff to {filename}."
-    except Exception as e:
-        return f"Error applying diff: {e}"
 
 
 def run_tests(project_path: str, timeout: int = 60) -> str:
@@ -573,7 +554,6 @@ class ToolRegistry:
             "find_line_numbers": find_line_numbers,
             "search_file_content": search_file_content,
             "read_code_chunk": read_code_chunk,
-            "apply_diff": apply_diff,
             "finish": finish,
             "generate_code_map": generate_code_map,
             "replan": replan,
@@ -610,7 +590,6 @@ class ToolRegistry:
             "- format_file(filename: str): Formats the specified Python file using Black and overwrites it.\n"
             "- google_search(query: str, num_results: int = 8): Performs a Google search and returns the top results.\n"
             "- view_text_website(url: str): Fetches the content of a website as plain text.\n"
-            "- apply_diff(filename: str, diff_content: str): Applies a diff patch to a file.\n"
             "- finish(reason: str): Call when the entire objective is complete.\n"
             "- replan(reason: str): Tell the orchestrator the current plan failed and request a new one.\n"
             "- create_subtask(description: str): Spawn a follow-up task for work that should be done later.\n"

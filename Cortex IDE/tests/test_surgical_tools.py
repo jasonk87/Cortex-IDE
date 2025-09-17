@@ -6,8 +6,7 @@ import sys
 # Add the parent directory to the sys.path to allow imports from the main app
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools import search_and_replace, insert_at_line, apply_diff
-import diff_match_patch as dmp_module
+from tools import search_and_replace, insert_at_line
 
 @pytest.fixture
 def temp_project(tmp_path):
@@ -53,26 +52,6 @@ def test_search_and_replace_not_found(temp_project):
     assert content == initial_content
 
 
-def test_apply_diff_success(temp_project):
-    """Tests successful application of a diff."""
-    filename = "test_file.txt"
-    file_path = os.path.join(temp_project, filename)
-
-    initial_content = "Hello world."
-    with open(file_path, "w") as f:
-        f.write(initial_content)
-
-    dmp = dmp_module.diff_match_patch()
-    diff = dmp.diff_main(initial_content, "Hello universe.")
-    patch = dmp.patch_make(diff)
-    diff_text = dmp.patch_toText(patch)
-
-    result = apply_diff(temp_project, filename, diff_text)
-    assert "Successfully applied diff" in result
-
-    with open(file_path, "r") as f:
-        content = f.read()
-    assert content == "Hello universe."
 
 def test_insert_at_line_middle(temp_project):
     """Tests inserting content in the middle of a file."""
