@@ -23,7 +23,7 @@ config_list = [
 # LLM configuration for the agents
 llm_config = {
     "config_list": config_list,
-    "cache_seed": 42,  # Use a seed for reproducibility
+    "cache_seed": 42, # Use a seed for reproducibility
 }
 
 # --- Agent Roles ---
@@ -37,7 +37,7 @@ planner = autogen.AssistantAgent(
     Break down the task into small, manageable steps for the developers. Start with creating a simple Python Flask backend to serve an HTML file and provide a file API.
     Ensure each step results in a single, complete, and correct file. The project files must be saved inside the 'project_files/' directory.
     When the project is complete, you must state that the goal has been achieved and `TERMINATE`.
-    """,
+    """
 )
 
 # 2. Developer Agent (handles both Frontend and Backend)
@@ -52,7 +52,7 @@ developer = autogen.AssistantAgent(
         2. An API route `/api/files` that returns a JSON list of filenames in the `project_files/` directory.
     - For the frontend, create an `index.html` file. It should fetch data from the `/api/files` endpoint and display it.
     Wait for the Planner to give you a task.
-    """,
+    """
 )
 
 # 3. Critic Agent
@@ -62,7 +62,7 @@ critic = autogen.AssistantAgent(
     system_message="""You are a code critic. Your job is to review the code and the plan for any flaws, errors, or inconsistencies.
     You must verify that the code is complete and adheres to the plan. You should also check for bugs.
     You do not write code, but you can suggest improvements.
-    """,
+    """
 )
 
 # 4. User Proxy Agent (with code execution)
@@ -72,18 +72,20 @@ user_proxy = autogen.UserProxyAgent(
     max_consecutive_auto_reply=10,
     is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
     code_execution_config={
-        "work_dir": "project_files",  # Set the working directory for code execution
+        "work_dir": "project_files", # Set the working directory for code execution
         "use_docker": False,
     },
     llm_config=llm_config,
-    system_message="A human user. Executes code and reports back the results.",
+    system_message="A human user. Executes code and reports back the results."
 )
 
 
 # --- Group Chat Setup ---
 
 groupchat = autogen.GroupChat(
-    agents=[user_proxy, planner, developer, critic], messages=[], max_round=20
+    agents=[user_proxy, planner, developer, critic],
+    messages=[],
+    max_round=20
 )
 manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config)
 
@@ -98,5 +100,5 @@ user_proxy.initiate_chat(
     The UI should be inspired by the 'go-agent-company/frontend/index.html' file, featuring a three-panel layout: a file tree, a main content/log area, and a file editor.
     
     Please start by creating a plan, then write the necessary backend and frontend files. All generated code should be placed in the 'project_files/' directory.
-    """,
+    """
 )

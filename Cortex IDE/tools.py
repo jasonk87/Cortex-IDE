@@ -3,17 +3,16 @@ import os
 import re
 import ast
 from pathlib import Path
-from typing import Dict, List, Any
 import subprocess
 from werkzeug.utils import secure_filename
-import time
+import uuid
 from datetime import datetime
-import shutil
 import zipfile
 from code_utils import _internal_lint_code, _internal_format_code
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
+import diff_match_patch as dmp_module
 
 
 def create_backup(project_path: str, *args, **kwargs) -> str:
@@ -265,7 +264,7 @@ def replan(project_path: str, reason: str) -> str:
 
 
 def create_subtask(project_path: str, description: str) -> str:
-    subtask_id = f"task_{int(time.time())}"
+    subtask_id = f"task_{uuid.uuid4()}"
     return f"SUBTASK_CREATED: {subtask_id} — {description}"
 
 
@@ -385,9 +384,22 @@ def read_code_chunk(
 
 
 def apply_diff(project_path: str, filename: str, diff_content: str) -> str:
+    """
+    Applies a diff patch to a file.
+    """
     try:
         file_path = get_safe_path(project_path, filename)
-        return "Note: `apply_diff` is a placeholder. Please use `read_file`, modify the content in your thought process, and use `save_file` for now."
+        dmp = dmp_module.diff_match_patch()
+        with open(file_path, "r", encoding="utf-8") as f:
+            original_content = f.read()
+        patches = dmp.patch_fromText(diff_content)
+        new_content, results = dmp.patch_apply(patches, original_content)
+        if all(results):
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+            return f"Successfully applied diff to {filename}."
+        else:
+            return f"Error applying diff to {filename}."
     except Exception as e:
         return f"Error applying diff: {e}"
 
@@ -598,6 +610,7 @@ class ToolRegistry:
             "- format_file(filename: str): Formats the specified Python file using Black and overwrites it.\n"
             "- google_search(query: str, num_results: int = 8): Performs a Google search and returns the top results.\n"
             "- view_text_website(url: str): Fetches the content of a website as plain text.\n"
+            "- apply_diff(filename: str, diff_content: str): Applies a diff patch to a file.\n"
             "- finish(reason: str): Call when the entire objective is complete.\n"
             "- replan(reason: str): Tell the orchestrator the current plan failed and request a new one.\n"
             "- create_subtask(description: str): Spawn a follow-up task for work that should be done later.\n"

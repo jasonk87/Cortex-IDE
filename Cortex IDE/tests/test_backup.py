@@ -10,7 +10,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools import create_backup
 
-
 @pytest.fixture
 def temp_project():
     """Create a temporary project directory with some files and a nested folder."""
@@ -24,7 +23,6 @@ def temp_project():
 
     # Teardown
     shutil.rmtree(project_dir)
-
 
 def test_create_backup_creates_backup_dir_and_zip(temp_project):
     """
@@ -42,7 +40,6 @@ def test_create_backup_creates_backup_dir_and_zip(temp_project):
     backup_files = list(backup_dir.glob("*.zip"))
     assert len(backup_files) == 1
 
-
 def test_create_backup_excludes_backups_dir_from_archive(temp_project):
     """
     Tests that the created backup archive does not contain the .backups
@@ -58,11 +55,11 @@ def test_create_backup_excludes_backups_dir_from_archive(temp_project):
     backup_files = list(backup_dir.glob("*.zip"))
     backup_zip_path = backup_files[0]
 
-    with zipfile.ZipFile(backup_zip_path, "r") as zipf:
+    with zipfile.ZipFile(backup_zip_path, 'r') as zipf:
         zip_contents = zipf.namelist()
 
         # Check that the .backups directory and its contents are not in the archive
-        assert not any(item.startswith(".backups") for item in zip_contents)
+        assert not any(item.startswith('.backups') for item in zip_contents)
         # Check that the other files are present
         assert "file1.txt" in zip_contents
         assert os.path.join("folder1", "file2.txt") in zip_contents

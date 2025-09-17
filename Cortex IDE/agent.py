@@ -2,26 +2,27 @@ import json
 import re
 import requests
 import time
+import threading
 from tools import ToolRegistry, generate_code_map
 import os
+import ast
+from pathlib import Path
+from typing import Dict, List, Any
 from memory_manager import MemoryManager
 
 # Load configuration from config.json
 try:
-    with open("Cortex IDE/config.json", "r") as f:
+    with open('Cortex IDE/config.json', 'r') as f:
         config = json.load(f)
-    OLLAMA_ENDPOINT = config.get(
-        "OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/generate"
-    )
+    OLLAMA_ENDPOINT = config.get("OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/generate")
     OLLAMA_MODEL = config.get("OLLAMA_MODEL", "llama2")
 except (FileNotFoundError, json.JSONDecodeError):
     OLLAMA_ENDPOINT = "http://127.0.0.1:11434/api/generate"
     OLLAMA_MODEL = "llama2"
 
-
 def _extract_first_json(text: str) -> str | None:
     # Simplified JSON extraction
-    match = re.search(r"\{.*\}", text, re.DOTALL)
+    match = re.search(r'\{.*\}', text, re.DOTALL)
     if match:
         try:
             # Verify it's valid JSON
@@ -31,32 +32,24 @@ def _extract_first_json(text: str) -> str | None:
             return None
     return None
 
-
 def call_llm_stream(prompt, emit_func):
     full_response = ""
     try:
         with requests.post(
             OLLAMA_ENDPOINT,
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": True,
-                "options": {"temperature": 0.0, "num_ctx": 8192},
-            },
-            stream=True,
-            timeout=180,
+            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True, "options": {"temperature": 0.0, "num_ctx": 8192}},
+            stream=True, timeout=180
         ) as response:
             response.raise_for_status()
             for chunk in response.iter_lines():
                 if chunk:
-                    decoded_chunk = chunk.decode("utf-8")
+                    decoded_chunk = chunk.decode('utf-8')
                     try:
                         json_chunk = json.loads(decoded_chunk)
                         content = json_chunk.get("response", "")
                         full_response += content
                         if emit_func:
-                            emit_func("agent_stream_chunk",
-                                      {"chunk": content})
+                            emit_func('agent_stream_chunk', {'chunk': content})
                         if json_chunk.get("done"):
                             break
                     except json.JSONDecodeError:
@@ -67,9 +60,8 @@ def call_llm_stream(prompt, emit_func):
         return full_response
     except requests.exceptions.RequestException as e:
         if emit_func:
-            emit_func("agent_log", {"message": f"Error calling LLM: {e}"})
+            emit_func('agent_log', {'message': f"Error calling LLM: {e}"})
         return ""
-
 
 class Agent:
     def __init__(self, project_path, emit_func, sleep_func):
@@ -87,13 +79,12 @@ class Agent:
     def log(self, message):
         print(f"Agent Log: {message}")
         self.log_history.append(message)
-        self.emit("agent_log", {"message": message})
+        self.emit('agent_log', {'message': message})
 
         # Add file-based logging for debugging
         try:
             # Writing to a project-relative path
-            log_path = os.path.join(os.path.dirname(__file__),
-                                    "agent_debug.log")
+            log_path = os.path.join(os.path.dirname(__file__), 'agent_debug.log')
             with open(log_path, "a") as f:
                 f.write(f"{time.time()} - {message}\n")
         except Exception as e:
@@ -108,15 +99,15 @@ class Agent:
     def run(self, objective):
         self.is_running = True
         self.stop_requested = False
-        self.conversation_history.append({"role": "user",
-                                           "content": objective})
+        self.conversation_history.append({"role": "user", "content": objective})
 
         try:
             # Phase 0: Create a backup before starting
             self.log("Phase 0: Creating project backup...")
-            backup_result = self._execute_tool(
-                {"tool_name": "create_backup", "arguments": {}}
-            )
+            backup_result = self._execute_tool({
+                "tool_name": "create_backup",
+                "arguments": {}
+            })
             self.log(backup_result)
 
             self.log("Phase 1: Creating a high-level plan...")
@@ -134,8 +125,7 @@ class Agent:
                 self.log(f"--- Executing Step {i+1}/{len(plan)}: {step} ---")
                 status = self._execute_step_with_react(step)
                 if status != "COMPLETED":
-                    self.log(f"Step failed with status: {status}. "
-                             "Aborting task.")
+                    self.log(f"Step failed with status: {status}. Aborting task.")
                     break
 
             if not self.stop_requested:
@@ -145,37 +135,26 @@ class Agent:
         finally:
             self.log("Task finished.")
             self.is_running = False
-            self.emit("task_finished")
+            self.emit('task_finished')
 
     def _create_high_level_plan(self):
         # This method now only creates the high-level plan, not sub-plans.
         # The ReAct loop handles the low-level execution.
-        last_user_message = self.conversation_history[-1]["content"]
-        relevant_memories = self.memory.search_memories(
-            last_user_message, n_results=3
-        )
+        last_user_message = self.conversation_history[-1]['content']
+        relevant_memories = self.memory.search_memories(last_user_message, n_results=3)
         memories_context = "No relevant memories found."
         if relevant_memories:
             self.log(f"Found {len(relevant_memories)} relevant memories.")
-            formatted_memories = "\n".join([f"- {mem}" for mem in
-                                           relevant_memories])
-            memories_context = (
-                "Here are some relevant memories from past tasks:"
-                f"\n{formatted_memories}"
-            )
+            formatted_memories = "\n".join([f"- {mem}" for mem in relevant_memories])
+            memories_context = f"Here are some relevant memories from past tasks:\n{formatted_memories}"
 
         planning_prompt = f"""
-        You are an expert AI software developer. Your goal is to create a
-        high-level, step-by-step plan to accomplish the user's objective.
-        The plan should consist of logical steps, not tool calls. The execution
-        of each step will be handled by a separate ReAct loop.
+        You are an expert AI software developer. Your goal is to create a high-level, step-by-step plan to accomplish the user's objective. The plan should consist of logical steps, not tool calls. The execution of each step will be handled by a separate ReAct loop.
 
         **INSTRUCTIONS: CHAIN OF THOUGHT**
         1.  **Deconstruct the Goal:** What is the user's ultimate objective?
-        2.  **Identify Key Stages:** What are the major phases needed (e.g.,
-            setup, implementation, testing, cleanup)?
-        3.  **Draft the Steps:** Create a high-level plan. Each step should be a
-            clear, logical objective for the ReAct agent to achieve.
+        2.  **Identify Key Stages:** What are the major phases needed (e.g., setup, implementation, testing, cleanup)?
+        3.  **Draft the Steps:** Create a high-level plan. Each step should be a clear, logical objective for the ReAct agent to achieve.
 
         **CONTEXT:**
         **Relevant Memories:**
@@ -187,11 +166,10 @@ class Agent:
         **Project Code Map:**
         {generate_code_map(self.project_path)}
         ---
-        Begin your thinking process now. After you have reasoned through the
-        plan, provide the JSON output.
+        Begin your thinking process now. After you have reasoned through the plan, provide the JSON output.
         """
 
-        self.emit("agent_thinking")
+        self.emit('agent_thinking')
         response_str = call_llm_stream(planning_prompt, self.emit)
         if not response_str:
             self.log("Planning failed: LLM call returned no response.")
@@ -207,21 +185,15 @@ class Agent:
             if self.stop_requested:
                 return "STOPPED"
 
-            self.log(
-                f"ReAct Iteration {i+1}/{max_iterations} "
-                f"for objective: '{objective}'"
-            )
+            self.log(f"ReAct Iteration {i+1}/{max_iterations} for objective: '{objective}'")
 
             code_map = generate_code_map(self.project_path)
 
             react_prompt = f"""
-            You are an autonomous agent executing a task. Your goal is to
-            achieve the following objective: **{objective}**
+            You are an autonomous agent executing a task. Your goal is to achieve the following objective: **{objective}**
 
             You will proceed in a Reason-Act-Observe loop.
-            1.  **Reason:** Based on the objective and previous observations,
-                decide the best tool to use next. Your reasoning should be
-                concise.
+            1.  **Reason:** Based on the objective and previous observations, decide the best tool to use next. Your reasoning should be concise.
             2.  **Act:** Output a single, valid JSON tool call.
 
             **Previous Actions & Observations:**
@@ -236,7 +208,7 @@ class Agent:
             Provide your reasoning and then the action to take.
             """
 
-            self.emit("agent_thinking")
+            self.emit('agent_thinking')
             response_str = call_llm_stream(react_prompt, self.emit)
             if not response_str:
                 self.log("ReAct failed: LLM call returned no response.")
@@ -244,29 +216,21 @@ class Agent:
 
             action_json = self._parse_json_action(response_str)
             if not action_json:
-                self.log("ReAct failed: Could not parse action from "
-                         "LLM response.")
+                self.log("ReAct failed: Could not parse action from LLM response.")
                 # Add the failed response to history so it can self-correct
-                react_history.append(
-                    {
-                        "observation": "Error: Invalid JSON action provided. "
-                        f"Raw response: {response_str}"
-                    }
-                )
+                react_history.append({"observation": f"Error: Invalid JSON action provided. Raw response: {response_str}"})
                 continue
 
-            # The 'finish' tool indicates the objective for this step is
-            # complete.
-            if action_json.get("tool_name") == "finish":
-                self.log(
-                    f"Agent concluded objective '{objective}' is complete. "
-                    f"Reason: {action_json.get('arguments', {}).get('reason', 'N/A')}"
-                )
+            # The 'finish' tool indicates the objective for this step is complete.
+            if action_json.get("tool_name") == 'finish':
+                self.log(f"Agent concluded objective '{objective}' is complete. Reason: {action_json.get('arguments', {}).get('reason', 'N/A')}")
                 return "COMPLETED"
 
             observation = self._execute_tool(action_json)
-            react_history.append({"action": action_json,
-                                  "observation": observation})
+            react_history.append({
+                "action": action_json,
+                "observation": observation
+            })
 
             # Keep history from getting too long
             if len(react_history) > 5:
@@ -278,8 +242,7 @@ class Agent:
     def _summarize_and_save_memory(self):
         self.log("Reflecting on the completed task to create a memory...")
         summarization_prompt = f"""
-        Based on the conversation, what is the most important lesson learned
-        or accomplishment?
+        Based on the conversation, what is the most important lesson learned or accomplishment?
         Summarize it as a concise, single sentence for a future AI agent.
 
         CONVERSATION:
@@ -287,10 +250,10 @@ class Agent:
 
         Respond with only the single sentence summary.
         """
-        self.emit("agent_thinking")
+        self.emit('agent_thinking')
         summary = call_llm_stream(summarization_prompt, None)
         if summary:
-            summary = summary.strip().replace('"', "")
+            summary = summary.strip().replace('"', '')
             self.log(f"Generated memory summary: {summary}")
             self.memory.add_memory(summary)
         else:
@@ -300,10 +263,7 @@ class Agent:
         try:
             tool_name = action_json["tool_name"]
             arguments = action_json.get("arguments", {})
-            self.conversation_history.append(
-                {"role": "agent",
-                 "content": json.dumps(action_json, indent=2)}
-            )
+            self.conversation_history.append({"role": "agent", "content": json.dumps(action_json, indent=2)})
             tool_function = self.tool_registry.get_tool(tool_name)
             if not tool_function:
                 result = f"Error: Unknown tool '{tool_name}'"
@@ -323,22 +283,12 @@ class Agent:
             if not json_str:
                 raise ValueError("No JSON array found in the response.")
             plan_data = json.loads(json_str)
-            plan = (
-                plan_data if isinstance(plan_data, list)
-                else plan_data.get("plan", [])
-            )
-            if not isinstance(plan, list) or not all(
-                isinstance(i, str) for i in plan
-            ):
-                raise ValueError(
-                    "Parsed data is not a valid plan "
-                    "(a JSON array of strings)."
-                )
+            plan = plan_data if isinstance(plan_data, list) else plan_data.get("plan", [])
+            if not isinstance(plan, list) or not all(isinstance(i, str) for i in plan):
+                raise ValueError("Parsed data is not a valid plan (a JSON array of strings).")
             self.log("Plan created successfully.")
-            self.emit("agent_plan_created", {"plan": plan})
-            self.conversation_history.append(
-                {"role": "agent", "content": json.dumps({"plan": plan})}
-            )
+            self.emit('agent_plan_created', {'plan': plan})
+            self.conversation_history.append({"role": "agent", "content": json.dumps({"plan": plan})})
             return plan
         except (ValueError, json.JSONDecodeError) as e:
             self.log(f"Fatal Error: Plan parsing failed. Error: {e}")
@@ -354,9 +304,7 @@ class Agent:
                 raise ValueError("Response missing 'action' key.")
             action = action_data.get("action")
             if not isinstance(action, dict) or "tool_name" not in action:
-                raise ValueError(
-                    "The 'action' key must be an object with a 'tool_name'."
-                )
+                raise ValueError("The 'action' key must be an object with a 'tool_name'.")
             self.log(f"Thought: {action_data.get('thought', 'N/A')}")
             return action
         except (ValueError, json.JSONDecodeError) as e:

@@ -14,7 +14,6 @@ pygame.display.set_caption("Pong Game")
 # Clock for controlling frame rate
 clock = pygame.time.Clock()
 
-
 # Paddle class
 class Paddle:
     def __init__(self, x, y):
@@ -31,10 +30,7 @@ class Paddle:
         self.y += self.velocity
 
     def draw(self):
-        pygame.draw.rect(
-            screen, (255, 255, 255), (self.x, self.y, self.width, self.height)
-        )
-
+        pygame.draw.rect(screen, (255, 255, 255), (self.x, self.y, self.width, self.height))
 
 # Ball class
 class Ball:
@@ -50,15 +46,12 @@ class Ball:
         self.y += self.velocity_y
 
     def draw(self):
-        pygame.draw.circle(
-            screen, (25, 25, 255), (int(self.x), int(self.y)), self.radius
-        )
-
+        pygame.draw.circle(screen, (25, 25, 255), (int(self.x), int(self.y)), self.radius)
 
 # Game objects
-player_paddle = Paddle(650, HEIGHT // 2 - 50)
-computer_paddle = Paddle(150, HEIGHT // 2 - 50)
-ball = Ball(WIDTH // 2, HEIGHT // 2)
+player_paddle = Paddle(650, HEIGHT//2 - 50)
+computer_paddle = Paddle(150, HEIGHT//2 - 50)
+ball = Ball(WIDTH//2, HEIGHT//2)
 
 # Game loop
 running = True
@@ -75,9 +68,9 @@ while running:
         player_paddle.move_down()
 
     # Computer paddle AI
-    if ball.y < computer_paddle.y + computer_paddle.height / 2:
+    if ball.y < computer_paddle.y + computer_paddle.height/2:
         computer_paddle.move_up()
-    elif ball.y > computer_paddle.y + computer_paddle.height / 2:
+    elif ball.y > computer_paddle.y + computer_paddle.height/2:
         computer_paddle.move_down()
 
     # Ball movement
@@ -88,26 +81,22 @@ while running:
         ball.velocity_y *= -1
 
     # Ball collision with paddles
-    if (
-        ball.x - ball.radius <= player_paddle.x + player_paddle.width
-        and player_paddle.y < ball.y < player_paddle.y + player_paddle.height
-    ):
+    if (ball.x - ball.radius <= player_paddle.x + player_paddle.width and
+        player_paddle.y < ball.y < player_paddle.y + player_paddle.height):
         ball.velocity_x *= -1
-    if (
-        ball.x + ball.radius >= computer_paddle.x
-        and computer_paddle.y < ball.y < computer_paddle.y + computer_paddle.height
-    ):
+    if (ball.x + ball.radius >= computer_paddle.x and
+        computer_paddle.y < ball.y < computer_paddle.y + computer_paddle.height):
         ball.velocity_x *= -1
 
     # Scoring
     if ball.x < 0:
         score_computer += 1
-        ball = Ball(WIDTH // 2, HEIGHT // 2)
+        ball = Ball(WIDTH//2, HEIGHT//2)
         ball.velocity_x = 3
         ball.velocity_y = 3
     elif ball.x > WIDTH:
         score_player += 1
-        ball = Ball(WIDTH // 2, HEIGHT // 2)
+        ball = Ball(WIDTH//2, HEIGHT//2)
         ball.velocity_x = -3
         ball.velocity_y = 3
 
@@ -119,10 +108,8 @@ while running:
 
     # Display scores
     font = pygame.font.SysFont("Arial", 30)
-    score_text = font.render(
-        f"Player: {score_player}  Computer: {score_computer}", True, (255, 255, 255)
-    )
-    screen.blit(score_text, (WIDTH // 2 - 150, 10))
+    score_text = font.render(f"Player: {score_player}  Computer: {score_computer}", True, (255, 255, 255))
+    screen.blit(score_text, (WIDTH//2 - 150, 10))
 
     pygame.display.flip()
     clock.tick(60)

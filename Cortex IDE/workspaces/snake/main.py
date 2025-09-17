@@ -1,14 +1,13 @@
 import menu
 
-
 def main():
     while True:
         choice = menu.display_menu()
-        if choice == "1":
+        if choice == '1':
             print("\033[1;32mStarting game...\033[0m")
             # Add game initialization code here
             break
-        elif choice == "2":
+        elif choice == '2':
             print("\033[1;31mExiting game.\033[0m")
             exit()
         else:
