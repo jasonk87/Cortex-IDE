@@ -608,29 +608,24 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     transition: background-color 0.2s, border-color 0.2s; /* Smooth transition */
 }
 
+.icon-btn {
+    padding: 5px 8px; /* Adjusted padding */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn svg {
+    transition: fill 0.2s ease-in-out;
+}
+
 .icon-btn:hover {
     background-color: var(--purple);
     color: white;
     border-color: var(--purple);
 }
 
-#create-item-form {
-    padding-bottom: 10px;
-    margin: 0 15px;
-}
-
-#create-item-form input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 6px;
-    font-size: 12px;
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    border: 1px solid var(--purple); /* Highlight when active */
-    border-radius: 3px;
-}
-
-/* --- Confirmation Modal --- */
+/* --- Modals (Create and Confirm) --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -653,10 +648,34 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
+.modal-content h3 {
+    margin: 0 0 15px 0;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
 .modal-content p {
     margin: 0 0 20px 0;
     font-size: 16px;
     color: var(--text-light);
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: var(--purple);
+    box-shadow: 0 0 5px rgba(199, 146, 234, 0.5);
 }
 
 .modal-buttons {
@@ -675,6 +694,17 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     background-color: var(--bg-dark);
     color: var(--text-light);
     transition: background-color 0.2s, border-color 0.2s;
+}
+
+.modal-btn-primary {
+    background-color: var(--purple);
+    color: white;
+    border-color: var(--purple);
+}
+
+.modal-btn-primary:hover {
+    opacity: 0.9;
+    border-color: var(--purple);
 }
 
 .modal-btn-danger {

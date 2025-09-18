@@ -27,10 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // New UI elements
     const addFileBtn = document.getElementById('add-file-btn');
     const addFolderBtn = document.getElementById('add-folder-btn');
-    const createItemForm = document.getElementById('create-item-form');
-    const newItemInput = document.getElementById('new-item-input');
 
     // Modal and Spinner elements
+    const createItemModal = document.getElementById('create-item-modal');
+    const createModalTitle = document.getElementById('create-modal-title');
+    const createModalInput = document.getElementById('create-modal-input');
+    const createModalConfirmBtn = document.getElementById('create-modal-confirm-btn');
+    const createModalCancelBtn = document.getElementById('create-modal-cancel-btn');
     const confirmationModal = document.getElementById('confirmation-modal');
     const modalText = document.getElementById('modal-text');
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -614,20 +617,33 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.value = '';
     });
 
-    function showCreateInput(type) {
-        createItemForm.style.display = 'block';
-        createItemForm.dataset.type = type; // 'file' or 'folder'
-        newItemInput.placeholder = `Enter new ${type} name...`;
-        newItemInput.focus();
+    function showCreateItemModal(type) {
+        const title = type === 'file' ? 'Create New File' : 'Create New Folder';
+        createModalTitle.textContent = title;
+        createModalInput.value = '';
+        createModalInput.placeholder = 'Enter name...';
+        createItemModal.dataset.type = type;
+        createItemModal.style.display = 'flex';
+        createModalInput.focus();
     }
 
-    addFileBtn.addEventListener('click', () => showCreateInput('file'));
-    addFolderBtn.addEventListener('click', () => showCreateInput('folder'));
+    function hideCreateItemModal() {
+        createItemModal.style.display = 'none';
+    }
 
-    createItemForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const itemName = newItemInput.value.trim();
-        const itemType = createItemForm.dataset.type;
+    addFileBtn.addEventListener('click', () => showCreateItemModal('file'));
+    addFolderBtn.addEventListener('click', () => showCreateItemModal('folder'));
+
+    createModalCancelBtn.addEventListener('click', hideCreateItemModal);
+    createItemModal.addEventListener('click', (e) => {
+        if (e.target === createItemModal) {
+            hideCreateItemModal();
+        }
+    });
+
+    createModalConfirmBtn.addEventListener('click', () => {
+        const itemName = createModalInput.value.trim();
+        const itemType = createItemModal.dataset.type;
 
         if (itemName) {
             if (itemType === 'file') {
@@ -635,15 +651,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (itemType === 'folder') {
                 createFolder(itemName);
             }
+            hideCreateItemModal();
         }
-        newItemInput.value = '';
-        createItemForm.style.display = 'none';
     });
 
-    newItemInput.addEventListener('blur', () => {
-        // Hide the form if the input loses focus and is empty
-        if (newItemInput.value.trim() === '') {
-            createItemForm.style.display = 'none';
+    createModalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            createModalConfirmBtn.click();
+        } else if (e.key === 'Escape') {
+            hideCreateItemModal();
         }
     });
 
