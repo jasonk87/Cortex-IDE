@@ -108,10 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         codeRunnerState = 'running';
         codeMirrorEditor.getWrapperElement().style.display = 'none';
-        terminalOutput.textContent = 'Running...';
+        terminalOutput.textContent = ''; // Clear previous output
         terminalOutput.style.display = 'block';
-        runCodeBtn.textContent = 'Stop';
-        runCodeBtn.classList.add('btn-stop');
+
+        runCodeBtn.disabled = true;
+        runCodeBtn.classList.add('btn-running');
+        runCodeBtn.innerHTML = '<span class="btn-text">Running...</span>';
+
         saveFileBtn.style.display = 'none';
 
         try {
@@ -128,9 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             terminalOutput.textContent = `Error during execution:\n${error.message}`;
         } finally {
             codeRunnerState = 'finished';
-            runCodeBtn.textContent = 'Clear';
-            runCodeBtn.classList.remove('btn-stop');
+            runCodeBtn.disabled = false;
+            runCodeBtn.classList.remove('btn-running');
             runCodeBtn.classList.add('btn-clear');
+            runCodeBtn.innerHTML = '<span class="btn-text">Clear</span>';
         }
     }
 
@@ -392,21 +396,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveFileContent() {
         if (!currentPath) return;
-        saveFileBtn.textContent = 'Saving...';
+
         saveFileBtn.disabled = true;
+        saveFileBtn.classList.add('btn-saving'); // Add saving class
+        saveFileBtn.innerHTML = '<span class="btn-text">Saving...</span>'; // Change text
+
         try {
             const content = codeMirrorEditor.getValue();
-            const response = await fetch('/api/save_file_content', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ filename: currentPath, content: content }) });
+            const response = await fetch('/api/save_file_content', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ filename: currentPath, content: content })
+            });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error);
-            addLog(result.message);
-            saveFileBtn.textContent = 'Saved!';
-            setTimeout(() => { saveFileBtn.textContent = 'Save'; }, 2000);
+
+            addLog(result.message, false, 'var(--green)');
+            saveFileBtn.classList.remove('btn-saving');
+            saveFileBtn.classList.add('btn-success');
+            saveFileBtn.innerHTML = '<span class="btn-text">Saved!</span>';
+
+            setTimeout(() => {
+                saveFileBtn.classList.remove('btn-success');
+                saveFileBtn.innerHTML = '<span class="btn-text">Save</span>';
+                saveFileBtn.disabled = false;
+            }, 2000);
+
         } catch (error) {
-            addLog(`Error saving file: ${error.message}`, true);
-            saveFileBtn.textContent = 'Save';
-        } finally {
-            saveFileBtn.disabled = false;
+            addLog(`Error saving file: ${error.message}`, false, 'var(--red)');
+            saveFileBtn.classList.remove('btn-saving');
+            saveFileBtn.classList.add('btn-error');
+            saveFileBtn.innerHTML = '<span class="btn-text">Error</span>';
+
+            setTimeout(() => {
+                saveFileBtn.classList.remove('btn-error');
+                saveFileBtn.innerHTML = '<span class="btn-text">Save</span>';
+                saveFileBtn.disabled = false;
+            }, 2000);
         }
     }
 

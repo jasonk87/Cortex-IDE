@@ -3,17 +3,17 @@ import os
 import re
 import ast
 from pathlib import Path
-from typing import Dict, List, Any
 import subprocess
 from werkzeug.utils import secure_filename
-import time
+import uuid
 from datetime import datetime
-import shutil
 import zipfile
 from code_utils import _internal_lint_code, _internal_format_code
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
+import diff_match_patch as dmp_module
+
 
 def create_backup(project_path: str, *args, **kwargs) -> str:
     """
@@ -29,11 +29,11 @@ def create_backup(project_path: str, *args, **kwargs) -> str:
         backup_filename = f"backup_{timestamp}.zip"
         backup_filepath = os.path.join(backup_dir, backup_filename)
 
-        with zipfile.ZipFile(backup_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        with zipfile.ZipFile(backup_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(project_path):
                 # Exclude the .backups directory itself from being walked
-                if '.backups' in dirs:
-                    dirs.remove('.backups')
+                if ".backups" in dirs:
+                    dirs.remove(".backups")
 
                 for file in files:
                     file_path = os.path.join(root, file)
@@ -45,6 +45,7 @@ def create_backup(project_path: str, *args, **kwargs) -> str:
     except Exception as e:
         return f"Error creating backup: {e}"
 
+
 def get_safe_path(project_path, filename):
     """Ensures file paths are safe, sanitized, and within the project directory."""
     if not project_path:
@@ -53,16 +54,19 @@ def get_safe_path(project_path, filename):
     safe_filename = secure_filename(filename)
     if not safe_filename:
         if Path(filename).is_absolute() or ".." in Path(filename).parts:
-             raise Exception("Invalid or potentially unsafe filename provided")
+            raise Exception("Invalid or potentially unsafe filename provided")
         safe_filename = filename
 
     file_path = os.path.join(project_path, safe_filename)
     normalized_path = os.path.normpath(file_path)
 
     if not normalized_path.startswith(os.path.normpath(project_path)):
-        raise PermissionError("Access denied: File path is outside of the project directory.")
+        raise PermissionError(
+            "Access denied: File path is outside of the project directory."
+        )
 
     return normalized_path
+
 
 def google_search(project_path: str, query: str, num_results: int = 8) -> str:
     """
@@ -80,6 +84,7 @@ def google_search(project_path: str, query: str, num_results: int = 8) -> str:
     except Exception as e:
         return f"Error performing Google search: {e}"
 
+
 def view_text_website(project_path: str, url: str) -> str:
     """
     Fetches the content of a website and returns it as plain text.
@@ -87,7 +92,7 @@ def view_text_website(project_path: str, url: str) -> str:
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, "html.parser")
 
         # Remove script and style elements
         for script_or_style in soup(["script", "style"]):
@@ -98,19 +103,21 @@ def view_text_website(project_path: str, url: str) -> str:
         # Clean up text
         lines = (line.strip() for line in text.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = '\n'.join(chunk for chunk in chunks if chunk)
+        text = "\n".join(chunk for chunk in chunks if chunk)
 
         return text
     except requests.exceptions.RequestException as e:
         return f"Error fetching website: {e}"
+
 
 def _compress_blank_lines(text: str, max_run: int = 2) -> str:
     """
     Collapse any run of > `max_run` consecutive new-lines to exactly `max_run`.
     Also strips trailing blank lines.
     """
-    text = re.sub(r'\n{'+str(max_run+1)+r',}', '\n'*max_run, text)
-    return text.rstrip() + '\n'
+    text = re.sub(r"\n{" + str(max_run + 1) + r",}", "\n" * max_run, text)
+    return text.rstrip() + "\n"
+
 
 class PythonCodeParser(ast.NodeVisitor):
     def __init__(self):
@@ -120,12 +127,12 @@ class PythonCodeParser(ast.NodeVisitor):
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
-            self.imports.add(alias.name.split('.')[0])
+            self.imports.add(alias.name.split(".")[0])
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module:
-            self.imports.add(node.module.split('.')[0])
+            self.imports.add(node.module.split(".")[0])
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
@@ -141,6 +148,7 @@ class PythonCodeParser(ast.NodeVisitor):
                 methods.append(f"{item.name}({', '.join(method_args)})")
         self.classes[class_name] = methods
 
+
 def generate_code_map(project_path: str, *args, **kwargs) -> str:
     project_path_obj = Path(project_path).resolve()
     if not project_path_obj.is_dir():
@@ -148,38 +156,56 @@ def generate_code_map(project_path: str, *args, **kwargs) -> str:
 
     code_map = {}
     file_tree_lines = []
-    exclude_dirs = {'__pycache__', '.git', '.idea', 'venv', '.venv', 'env', 'node_modules'}
+    exclude_dirs = {
+        "__pycache__",
+        ".git",
+        ".idea",
+        "venv",
+        ".venv",
+        "env",
+        "node_modules",
+    }
 
     for root, dirs, files in os.walk(project_path_obj, topdown=True):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
         current_path = Path(root)
         relative_path = current_path.relative_to(project_path_obj)
         level = len(relative_path.parts)
-        indent = '    ' * level
-        dir_name = current_path.name if str(relative_path) != '.' else project_path_obj.name
+        indent = "    " * level
+        dir_name = (
+            current_path.name if str(relative_path) != "." else project_path_obj.name
+        )
         file_tree_lines.append(f"{indent}📁 {dir_name}/")
-        file_indent = '    ' * (level + 1)
+        file_indent = "    " * (level + 1)
         for name in sorted(files):
             file_tree_lines.append(f"{file_indent}📄 {name}")
-            if name.endswith('.py'):
+            if name.endswith(".py"):
                 file_path = current_path / name
                 relative_file_path_str = str(file_path.relative_to(project_path_obj))
                 try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         source_code = f.read()
                     tree = ast.parse(source_code, filename=name)
                     parser = PythonCodeParser()
                     for node in ast.iter_child_nodes(tree):
-                         parser.visit(node)
+                        parser.visit(node)
                     code_map[relative_file_path_str] = {
                         "imports": sorted(list(parser.imports)),
                         "functions": sorted(parser.functions),
-                        "classes": {k: sorted(v) for k, v in sorted(parser.classes.items())}
+                        "classes": {
+                            k: sorted(v) for k, v in sorted(parser.classes.items())
+                        },
                     }
                 except Exception as e:
-                    code_map[relative_file_path_str] = {"error": f"Could not parse file: {e}"}
+                    code_map[relative_file_path_str] = {
+                        "error": f"Could not parse file: {e}"
+                    }
 
-    output_md = "# Project Code Map\n\n## File Tree\n```\n" + "\n".join(file_tree_lines) + "\n```\n\n## Code Structure Analysis\n"
+    output_md = (
+        "# Project Code Map\n\n## File Tree\n```\n"
+        + "\n".join(file_tree_lines)
+        + "\n```\n\n## Code Structure Analysis\n"
+    )
     if not code_map:
         output_md += "No Python files were found or parsed in the project.\n"
     else:
@@ -189,8 +215,8 @@ def generate_code_map(project_path: str, *args, **kwargs) -> str:
                 output_md += f"- **Error:** {data['error']}\n"
                 continue
             if not data["imports"] and not data["classes"] and not data["functions"]:
-                 output_md += "- *No classes, functions, or imports found.*\n"
-                 continue
+                output_md += "- *No classes, functions, or imports found.*\n"
+                continue
             if data["imports"]:
                 output_md += "- **Imports:** `" + "`, `".join(data["imports"]) + "`\n"
             if data["classes"]:
@@ -198,24 +224,29 @@ def generate_code_map(project_path: str, *args, **kwargs) -> str:
                 for class_name, methods in data["classes"].items():
                     output_md += f"  - **`{class_name}`**:\n"
                     if methods:
-                        for method in methods: output_md += f"    - `{method}`\n"
-                    else: output_md += f"    - *(No methods defined)*\n"
+                        for method in methods:
+                            output_md += f"    - `{method}`\n"
+                    else:
+                        output_md += f"    - *(No methods defined)*\n"
             if data["functions"]:
                 output_md += "- **Functions:**\n"
-                for func in data["functions"]: output_md += f"  - `{func}`\n"
+                for func in data["functions"]:
+                    output_md += f"  - `{func}`\n"
             output_md += "\n"
     return output_md.strip()
+
 
 def save_file(project_path: str, filename: str, content: str) -> str:
     try:
         file_path = get_safe_path(project_path, filename)
-        if len(content) > 10_000 or content.count('\n')/max(len(content),1) > 0.3:
+        if len(content) > 10_000 or content.count("\n") / max(len(content), 1) > 0.3:
             content = _compress_blank_lines(content)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         return f"Successfully saved file: {os.path.basename(filename)}"
     except Exception as e:
         return f"Error saving file '{filename}': {e}"
+
 
 def delete_file(project_path: str, filename: str) -> str:
     try:
@@ -227,12 +258,15 @@ def delete_file(project_path: str, filename: str) -> str:
     except Exception as e:
         return f"Error deleting file '{filename}': {e}"
 
+
 def replan(project_path: str, reason: str) -> str:
     return f"REPLAN_REQUESTED: {reason}"
 
+
 def create_subtask(project_path: str, description: str) -> str:
-    subtask_id = f"task_{int(time.time())}"
+    subtask_id = f"task_{uuid.uuid4()}"
     return f"SUBTASK_CREATED: {subtask_id} — {description}"
+
 
 def execute_python_file(project_path: str, filename: str, timeout: int = 10) -> str:
     try:
@@ -241,38 +275,53 @@ def execute_python_file(project_path: str, filename: str, timeout: int = 10) -> 
         if not os.path.exists(full_safe_path):
             return f"Error: File '{filename}' not found."
         env = os.environ.copy()
-        env['PYTHONUNBUFFERED'] = '1'
+        env["PYTHONUNBUFFERED"] = "1"
         result = subprocess.run(
-            ['python', relative_filename],
-            capture_output=True, text=True, timeout=timeout,
-            cwd=project_path, encoding='utf-8', env=env
+            ["python", relative_filename],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=project_path,
+            encoding="utf-8",
+            env=env,
         )
         return f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
-        return f"Error: Execution timed out after {timeout} seconds for file '{filename}'."
+        return (
+            f"Error: Execution timed out after {timeout} seconds for file '{filename}'."
+        )
     except Exception as e:
         return f"Error executing file '{filename}': {e}"
+
 
 def list_files(project_path: str) -> str:
     try:
         if not os.path.isdir(project_path):
             return "Error: Project path is not a valid directory."
-        files = [f for f in os.listdir(project_path) if os.path.isfile(os.path.join(project_path, f))]
-        if not files: return "No files in the project directory."
+        files = [
+            f
+            for f in os.listdir(project_path)
+            if os.path.isfile(os.path.join(project_path, f))
+        ]
+        if not files:
+            return "No files in the project directory."
         return "\n".join(files)
     except Exception as e:
         return f"Error listing files: {e}"
 
+
 def read_file(project_path: str, filename: str) -> str:
     try:
         file_path = get_safe_path(project_path, filename)
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
     except Exception as e:
         return f"Error reading file '{filename}': {e}"
 
+
 def finish(project_path: str, reason: str) -> None:
     return None
+
 
 def find_line_numbers(project_path: str, filename: str, keyword: str) -> str:
     try:
@@ -280,7 +329,7 @@ def find_line_numbers(project_path: str, filename: str, keyword: str) -> str:
         if not os.path.exists(file_path):
             return f"Error: File '{os.path.basename(filename)}' not found."
         found_lines = []
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             for i, line in enumerate(f, 1):
                 if keyword in line:
                     found_lines.append(str(i))
@@ -290,6 +339,7 @@ def find_line_numbers(project_path: str, filename: str, keyword: str) -> str:
     except Exception as e:
         return f"Error searching in file '{filename}': {e}"
 
+
 def search_file_content(project_path: str, keyword: str) -> str:
     base_dir = Path(project_path).resolve()
     patt = re.compile(re.escape(keyword), re.IGNORECASE)
@@ -298,37 +348,42 @@ def search_file_content(project_path: str, keyword: str) -> str:
         for fname in files:
             fpath = Path(root) / fname
             try:
-                with fpath.open('r', encoding='utf-8', errors='ignore') as f:
+                with fpath.open("r", encoding="utf-8", errors="ignore") as f:
                     for ln_no, line in enumerate(f, 1):
                         if patt.search(line):
                             rel = fpath.relative_to(base_dir)
                             matches.append(f"{rel}, line {ln_no}: {line.strip()}")
-            except (UnicodeDecodeError, PermissionError): continue
-    if not matches: return f"Keyword '{keyword}' not found in any file content in the project."
+            except (UnicodeDecodeError, PermissionError):
+                continue
+    if not matches:
+        return f"Keyword '{keyword}' not found in any file content in the project."
     return "Search results:\n" + "\n".join(matches[:50])
+
 
 def echo(project_path: str, message: str) -> str:
     return message
 
-def read_code_chunk(project_path: str, filename: str, start_line: int, line_count: int = 50) -> str:
+
+def read_code_chunk(
+    project_path: str, filename: str, start_line: int, line_count: int = 50
+) -> str:
     try:
         file_path = get_safe_path(project_path, filename)
-        with open(file_path, 'r', encoding='utf-8') as f: lines = f.readlines()
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
         start_index = start_line - 1
         end_index = start_index + line_count
         if start_index < 0 or start_index >= len(lines):
-            return f"Error: start_line {start_line} is out of bounds for file {filename}."
+            return (
+                f"Error: start_line {start_line} is out of bounds for file {filename}."
+            )
         chunk = "".join(lines[start_index:end_index])
         return f"--- Code from {filename} (lines {start_line}-{end_index}) ---\n{chunk}"
     except Exception as e:
         return f"Error reading file chunk: {e}"
 
-def apply_diff(project_path: str, filename: str, diff_content: str) -> str:
-    try:
-        file_path = get_safe_path(project_path, filename)
-        return "Note: `apply_diff` is a placeholder. Please use `read_file`, modify the content in your thought process, and use `save_file` for now."
-    except Exception as e:
-        return f"Error applying diff: {e}"
+
+
 
 def run_tests(project_path: str, timeout: int = 60) -> str:
     """
@@ -340,11 +395,15 @@ def run_tests(project_path: str, timeout: int = 60) -> str:
             return "Error: Project path is not a valid directory."
 
         env = os.environ.copy()
-        env['PYTHONUNBUFFERED'] = '1'
+        env["PYTHONUNBUFFERED"] = "1"
         result = subprocess.run(
-            ['python', '-m', 'pytest'],
-            capture_output=True, text=True, timeout=timeout,
-            cwd=project_path, encoding='utf-8', env=env
+            ["python", "-m", "pytest"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=project_path,
+            encoding="utf-8",
+            env=env,
         )
         output = f"Exit Code: {result.returncode}\n"
         if result.stdout:
@@ -364,7 +423,10 @@ def run_tests(project_path: str, timeout: int = 60) -> str:
     except Exception as e:
         return f"An unexpected error occurred while running tests: {e}"
 
-def search_and_replace(project_path: str, filename: str, search_query: str, replacement_text: str) -> str:
+
+def search_and_replace(
+    project_path: str, filename: str, search_query: str, replacement_text: str
+) -> str:
     """
     Performs a search and replace operation on a file.
     Replaces all occurrences of search_query with replacement_text.
@@ -373,18 +435,21 @@ def search_and_replace(project_path: str, filename: str, search_query: str, repl
         file_path = get_safe_path(project_path, filename)
         if not os.path.exists(file_path):
             return f"Error: File '{os.path.basename(filename)}' not found."
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         if search_query not in content:
             return f"Error: Search query '{search_query}' not found in {os.path.basename(filename)}."
         new_content = content.replace(search_query, replacement_text)
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         return f"Successfully replaced '{search_query}' with '{replacement_text}' in {os.path.basename(filename)}."
     except Exception as e:
         return f"Error during search and replace in '{filename}': {e}"
 
-def insert_at_line(project_path: str, filename: str, line_number: int, content_to_insert: str) -> str:
+
+def insert_at_line(
+    project_path: str, filename: str, line_number: int, content_to_insert: str
+) -> str:
     """
     Inserts a block of text into a file at a specific line number.
     """
@@ -392,18 +457,19 @@ def insert_at_line(project_path: str, filename: str, line_number: int, content_t
         file_path = get_safe_path(project_path, filename)
         if not os.path.exists(file_path):
             return f"Error: File '{os.path.basename(filename)}' not found."
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         if not (1 <= line_number <= len(lines) + 1):
             return f"Error: Line number {line_number} is out of bounds for file {os.path.basename(filename)} which has {len(lines)} lines."
-        if not content_to_insert.endswith('\n'):
-            content_to_insert += '\n'
+        if not content_to_insert.endswith("\n"):
+            content_to_insert += "\n"
         lines.insert(line_number - 1, content_to_insert)
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.writelines(lines)
         return f"Successfully inserted content into {os.path.basename(filename)} at line {line_number}."
     except Exception as e:
         return f"Error during insert operation in '{filename}': {e}"
+
 
 def lint_file_tool(project_path: str, filename: str) -> str:
     """
@@ -416,7 +482,7 @@ def lint_file_tool(project_path: str, filename: str) -> str:
             return "Error: Linting is only supported for Python files (.py)."
         if not os.path.exists(target_file_path):
             return f"Error: File '{filename}' not found for linting."
-        with open(target_file_path, 'r', encoding='utf-8') as f:
+        with open(target_file_path, "r", encoding="utf-8") as f:
             code_content = f.read()
         if not code_content.strip():
             return f"File '{filename}' is empty. No linting needed."
@@ -430,12 +496,15 @@ def lint_file_tool(project_path: str, filename: str) -> str:
             else:
                 summary = [f"Found {len(issues)} linting issues in '{filename}':"]
                 for issue in issues:
-                    summary.append(f"  - Line {issue['line']}, Col {issue['col']}: [{issue['code']}] {issue['message']}")
+                    summary.append(
+                        f"  - Line {issue['line']}, Col {issue['col']}: [{issue['code']}] {issue['message']}"
+                    )
                 return "\n".join(summary)
         else:
             return f"Error linting file '{filename}': {result.get('error', 'Unknown linting error')}. Details: {result.get('details', '')}"
     except Exception as e:
         return f"Error during lint_file_tool for '{filename}': {str(e)}"
+
 
 def format_file_tool(project_path: str, filename: str) -> str:
     """
@@ -449,7 +518,7 @@ def format_file_tool(project_path: str, filename: str) -> str:
         if not os.path.exists(target_file_path):
             return f"Error: File '{filename}' not found for formatting."
 
-        with open(target_file_path, 'r', encoding='utf-8') as f:
+        with open(target_file_path, "r", encoding="utf-8") as f:
             original_content = f.read()
         if not original_content.strip():
             return f"File '{filename}' is empty. No formatting needed."
@@ -459,7 +528,7 @@ def format_file_tool(project_path: str, filename: str) -> str:
         if result.get("success"):
             formatted_content = result.get("formatted_code")
             if formatted_content != original_content:
-                with open(target_file_path, 'w', encoding='utf-8') as f:
+                with open(target_file_path, "w", encoding="utf-8") as f:
                     f.write(formatted_content)
                 return f"File '{filename}' formatted successfully."
             else:
@@ -469,8 +538,10 @@ def format_file_tool(project_path: str, filename: str) -> str:
     except Exception as e:
         return f"Error during format_file_tool for '{filename}': {str(e)}"
 
+
 class ToolRegistry:
     """A registry to hold and manage the agent's tools."""
+
     def __init__(self, project_path: str):
         self._tools = {
             "create_backup": create_backup,
@@ -483,7 +554,6 @@ class ToolRegistry:
             "find_line_numbers": find_line_numbers,
             "search_file_content": search_file_content,
             "read_code_chunk": read_code_chunk,
-            "apply_diff": apply_diff,
             "finish": finish,
             "generate_code_map": generate_code_map,
             "replan": replan,

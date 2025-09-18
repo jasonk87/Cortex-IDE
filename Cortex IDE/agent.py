@@ -74,6 +74,8 @@ class Agent:
         self.is_running = False
         self.stop_requested = False
         self.memory = MemoryManager(project_path)
+        self.plan = []
+        self.objective = ""
         self.log("MemoryManager initialized.")
 
     def log(self, message):
@@ -99,38 +101,47 @@ class Agent:
     def run(self, objective):
         self.is_running = True
         self.stop_requested = False
+        self.objective = objective
         self.conversation_history.append({"role": "user", "content": objective})
+
+        if self.load_state():
+            self.log("Resuming from saved state.")
+        else:
+            self.log("Starting new task.")
 
         try:
             # Phase 0: Create a backup before starting
-            self.log("Phase 0: Creating project backup...")
-            backup_result = self._execute_tool({
-                "tool_name": "create_backup",
-                "arguments": {}
-            })
-            self.log(backup_result)
+            if not self.plan:
+                self.log("Phase 0: Creating project backup...")
+                backup_result = self._execute_tool({
+                    "tool_name": "create_backup",
+                    "arguments": {}
+                })
+                self.log(backup_result)
 
-            self.log("Phase 1: Creating a high-level plan...")
-            plan = self._create_high_level_plan()
-            if not plan:
-                self.log("Failed to create a plan. Aborting task.")
-                return
+                self.log("Phase 1: Creating a high-level plan...")
+                self.plan = self._create_high_level_plan()
+                if not self.plan:
+                    self.log("Failed to create a plan. Aborting task.")
+                    return
 
             self.log("Executing plan...")
-            for i, step in enumerate(plan):
+            for i, step in enumerate(self.plan):
                 if self.stop_requested:
                     self.log("Execution stopped by user.")
                     break
 
-                self.log(f"--- Executing Step {i+1}/{len(plan)}: {step} ---")
+                self.log(f"--- Executing Step {i+1}/{len(self.plan)}: {step} ---")
                 status = self._execute_step_with_react(step)
                 if status != "COMPLETED":
                     self.log(f"Step failed with status: {status}. Aborting task.")
                     break
+                self.save_state()
 
             if not self.stop_requested:
                 self.log("All steps completed successfully.")
                 self._summarize_and_save_memory()
+                self.clear_state()
 
         finally:
             self.log("Task finished.")
@@ -283,13 +294,13 @@ class Agent:
             if not json_str:
                 raise ValueError("No JSON array found in the response.")
             plan_data = json.loads(json_str)
-            plan = plan_data if isinstance(plan_data, list) else plan_data.get("plan", [])
-            if not isinstance(plan, list) or not all(isinstance(i, str) for i in plan):
+            self.plan = plan_data if isinstance(plan_data, list) else plan_data.get("plan", [])
+            if not isinstance(self.plan, list) or not all(isinstance(i, str) for i in self.plan):
                 raise ValueError("Parsed data is not a valid plan (a JSON array of strings).")
             self.log("Plan created successfully.")
-            self.emit('agent_plan_created', {'plan': plan})
-            self.conversation_history.append({"role": "agent", "content": json.dumps({"plan": plan})})
-            return plan
+            self.emit('agent_plan_created', {'plan': self.plan})
+            self.conversation_history.append({"role": "agent", "content": json.dumps({"plan": self.plan})})
+            return self.plan
         except (ValueError, json.JSONDecodeError) as e:
             self.log(f"Fatal Error: Plan parsing failed. Error: {e}")
             return None
@@ -310,3 +321,30 @@ class Agent:
         except (ValueError, json.JSONDecodeError) as e:
             self.log(f"Action parsing failed: {e}. Raw response: {response_str}")
             return None
+
+    def save_state(self):
+        state = {
+            "objective": self.objective,
+            "plan": self.plan,
+            "conversation_history": self.conversation_history,
+        }
+        state_dir = os.path.join(self.project_path, ".cortex_agent")
+        os.makedirs(state_dir, exist_ok=True)
+        with open(os.path.join(state_dir, "state.json"), "w") as f:
+            json.dump(state, f, indent=2)
+
+    def load_state(self):
+        state_file = os.path.join(self.project_path, ".cortex_agent", "state.json")
+        if os.path.exists(state_file):
+            with open(state_file, "r") as f:
+                state = json.load(f)
+            if state.get("objective") == self.objective:
+                self.plan = state.get("plan", [])
+                self.conversation_history = state.get("conversation_history", [])
+                return True
+        return False
+
+    def clear_state(self):
+        state_file = os.path.join(self.project_path, ".cortex_agent", "state.json")
+        if os.path.exists(state_file):
+            os.remove(state_file)

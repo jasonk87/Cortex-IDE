@@ -117,7 +117,8 @@ h1 {
 }
 
 #file-tree-list li a:hover,
-#file-tree-list li.active > a { /* Target the <a> inside an active <li> */
+#file-tree-list li.active > a,
+#file-tree-list li > .directory-name:hover { /* Target the <a> inside an active <li> */
     background-color: rgba(199, 146, 234, 0.2);
 }
 
@@ -486,6 +487,21 @@ li.directory:hover > .delete-folder-btn {
     padding-bottom: 5px;
 }
 
+/* --- Transitions & Animations --- */
+body, .panel, .input-form input, .input-form button, .panel-header button, #file-tree-list li a, .icon-btn, .modal-content {
+    transition: all 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#app-container {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+
 /* --- NEW: Professional Log Entry Styles --- */
 .log-entry {
     border-bottom: 1px solid var(--border);
@@ -701,4 +717,47 @@ li.directory:hover > .delete-folder-btn {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* --- Button States --- */
+
+/* Base state for buttons that will have icons/spinners */
+#save-file-btn, #run-code-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Styling for the text inside the button, to allow for transitions */
+.btn-text {
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Saving state with a spinner */
+.btn-saving::before, .btn-running::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.btn-saving .btn-text, .btn-running .btn-text {
+    opacity: 0; /* Hide original text */
+}
+
+/* Success and Error states */
+.btn-success {
+    background-color: var(--green) !important;
+    color: var(--bg-dark) !important;
+}
+
+.btn-error {
+    background-color: var(--red) !important;
+    color: white !important;
 }
