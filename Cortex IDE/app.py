@@ -399,6 +399,5 @@ def delete_folder():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=False, use_reloader=False, port=5001, allow_unsafe_werkzeug=True)
