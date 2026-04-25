@@ -6,3 +6,6 @@ pytest
 pytest-flask
 Flask-SocketIO
 sentence-transformers
+diff-match-patch
+flake8
+black
