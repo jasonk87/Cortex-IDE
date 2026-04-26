@@ -791,3 +791,30 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     background-color: var(--red) !important;
     color: white !important;
 }
+/* --- Context Menu --- */
+#context-menu {
+    position: absolute;
+    z-index: 1000;
+    width: 150px;
+    background: var(--bg-lighter);
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    padding: 5px 0;
+    display: none;
+    flex-direction: column;
+}
+
+#context-menu button {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    padding: 10px 15px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#context-menu button:hover {
+    background-color: var(--bg-dark);
+}

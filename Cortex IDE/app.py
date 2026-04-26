@@ -33,16 +33,16 @@ def agent_runner(sid, project_path, objective):
     def broadcast_to_project(event, data=None):
         # We emit directly to the room, not a specific SID
         socketio.emit(event, data, room=project_path)
-    
+
     agent = Agent(
-        project_path=project_path, 
+        project_path=project_path,
         emit_func=broadcast_to_project,
         sleep_func=socketio.sleep
     )
     # Use project_path as the key for active agents
     active_agents[project_path] = agent
     agent.run(objective)
-    
+
     if project_path in active_agents:
         del active_agents[project_path]
         print(f"Agent task finished for project {project_path}, removed from active list.")
@@ -147,7 +147,7 @@ def get_directory_structure(root_path):
         for item_name in sorted(os.listdir(root_path)):
             item_path = os.path.join(root_path, item_name)
             relative_path = os.path.relpath(item_path, session.get('project_path'))
-            
+
             if item_name.startswith('.') or item_name == '__pycache__':
                 continue
 
@@ -198,7 +198,7 @@ def download_project():
         return jsonify({"error": "No active project in session."}), 400
 
     project_name = os.path.basename(project_path)
-    
+
     try:
         # Note: shutil creates the archive in the current working directory.
         # It returns the full path to the created .zip file.
@@ -273,7 +273,7 @@ def get_file_content():
 def create_file():
     project_path = session.get('project_path')
     if not project_path: return jsonify({"error": "No active project session"}), 400
-    
+
     data = request.get_json()
     try:
         file_path = get_safe_path(project_path, data.get('filename'))
@@ -287,23 +287,23 @@ def create_file():
 @app.route('/api/delete_file', methods=['POST'])
 def delete_file_route():
     project_path = session.get('project_path')
-    if not project_path: 
+    if not project_path:
         return jsonify({"error": "No active project session"}), 400
-    
+
     data = request.get_json()
     filename = data.get('filename')
     if not filename:
         return jsonify({"error": "Filename is required"}), 400
-        
+
     try:
         from tools import delete_file
         result_message = delete_file(project_path, filename)
-        
+
         if "Error:" in result_message:
             return jsonify({"error": result_message}), 404
 
         filename_to_save = data.get('filename')
-        socketio.emit('file_system_updated', {'filename': filename_to_save}, room=project_path)    
+        socketio.emit('file_system_updated', {'filename': filename_to_save}, room=project_path)
         return jsonify({"message": result_message})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -312,7 +312,7 @@ def delete_file_route():
 def save_file_content():
     project_path = session.get('project_path')
     if not project_path: return jsonify({"error": "No active project session"}), 400
-    
+
     data = request.get_json()
     try:
         file_path = get_safe_path(project_path, data.get('filename'))
@@ -326,26 +326,26 @@ def save_file_content():
 def execute_code():
     project_path = session.get('project_path')
     if not project_path: return jsonify({"error": "No active project session"}), 400
-        
+
     data = request.get_json()
     code = data.get('code', '')
     if not code.strip(): return jsonify({"error": "Cannot execute empty code"}), 400
 
     temp_filename = f"temp_{uuid.uuid4()}.py"
-    
+
     try:
         temp_filepath = get_safe_path(project_path, temp_filename)
         with open(temp_filepath, 'w', encoding='utf-8') as f: f.write(code)
-        
+
         env = os.environ.copy()
         env['PYTHONUTF8'] = '1'
-        
+
         result = subprocess.run(
             ['python', temp_filename],
             capture_output=True, text=True, timeout=180,
             cwd=project_path, encoding='utf-8', env=env
         )
-        
+
         return jsonify({
             "stdout": result.stdout, "stderr": result.stderr, "exit_code": result.returncode
         })
@@ -361,7 +361,7 @@ def execute_code():
 def create_folder():
     project_path = session.get('project_path')
     if not project_path: return jsonify({"error": "No active project session"}), 400
-    
+
     data = request.get_json()
     folder_path = data.get('path')
     if not folder_path: return jsonify({'error': 'Folder path is required'}), 400
@@ -370,11 +370,40 @@ def create_folder():
         full_path = get_safe_path(project_path, folder_path)
         if os.path.exists(full_path):
             return jsonify({'error': 'Folder or file already exists at that path'}), 409
-        
+
         os.makedirs(full_path)
         filename_to_save = data.get('filename')
         socketio.emit('file_system_updated', {'filename': filename_to_save}, room=project_path)
         return jsonify({'message': f"Folder '{folder_path}' created successfully."})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/rename_item', methods=['POST'])
+def rename_item():
+    project_path = session.get('project_path')
+    if not project_path: return jsonify({"error": "No active project session"}), 400
+
+    data = request.get_json()
+    old_path_str = data.get('old_path')
+    new_path_str = data.get('new_path')
+
+    if not old_path_str or not new_path_str:
+        return jsonify({"error": "old_path and new_path are required"}), 400
+
+    try:
+        old_full_path = get_safe_path(project_path, old_path_str)
+        new_full_path = get_safe_path(project_path, new_path_str)
+
+        if not os.path.exists(old_full_path):
+            return jsonify({'error': 'Source item does not exist'}), 404
+        if os.path.exists(new_full_path):
+            return jsonify({'error': 'Destination already exists'}), 409
+
+        import shutil
+        shutil.move(old_full_path, new_full_path)
+        socketio.emit('file_system_updated', {'filename': new_path_str}, room=project_path)
+        return jsonify({'message': f"Successfully renamed/moved."})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

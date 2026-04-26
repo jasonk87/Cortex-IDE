@@ -28,6 +28,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const addFileBtn = document.getElementById('add-file-btn');
     const addFolderBtn = document.getElementById('add-folder-btn');
 
+    // Context Menu & Rename Modal
+    const contextMenu = document.getElementById('context-menu');
+    const contextMenuRename = document.getElementById('context-menu-rename');
+    const contextMenuDelete = document.getElementById('context-menu-delete');
+
+    const renameItemModal = document.getElementById('rename-item-modal');
+    const renameModalTitle = document.getElementById('rename-modal-title');
+    const renameModalInput = document.getElementById('rename-modal-input');
+    const renameModalConfirmBtn = document.getElementById('rename-modal-confirm-btn');
+    const renameModalCancelBtn = document.getElementById('rename-modal-cancel-btn');
+    let contextMenuTarget = null;
+    let contextMenuType = null;
+
     // Modal and Spinner elements
     const createItemModal = document.getElementById('create-item-modal');
     const createModalTitle = document.getElementById('create-modal-title');
@@ -293,6 +306,27 @@ document.addEventListener('DOMContentLoaded', () => {
            addLog(result.message);
            await updateFileTree();
        } catch (error) { addLog(`Error creating file: ${error.message}`, true); }
+   }
+
+
+   async function renameItem(oldPath, newPath) {
+       try {
+           const response = await fetch('/api/rename_item', {
+               method: 'POST',
+               headers: {'Content-Type': 'application/json'},
+               body: JSON.stringify({ old_path: oldPath, new_path: newPath })
+           });
+           const result = await response.json();
+           if (!response.ok) throw new Error(result.error);
+           addLog(result.message);
+           await updateFileTree();
+           if (currentPath === oldPath) {
+               currentPath = newPath;
+               fileViewerHeader.textContent = `File Viewer - ${currentPath}`;
+           }
+       } catch (error) {
+           addLog(`Error renaming item: ${error.message}`, true);
+       }
    }
 
    async function deleteFile(path) {
@@ -660,6 +694,66 @@ document.addEventListener('DOMContentLoaded', () => {
             createModalConfirmBtn.click();
         } else if (e.key === 'Escape') {
             hideCreateItemModal();
+        }
+    });
+
+
+    // --- Context Menu Logic ---
+    fileTreeList.addEventListener('contextmenu', (e) => {
+        const li = e.target.closest('li');
+        if (!li) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        contextMenuTarget = li.dataset.path;
+        contextMenuType = li.classList.contains('directory') ? 'folder' : 'file';
+
+        contextMenu.style.display = 'flex';
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.top = `${e.pageY}px`;
+    });
+
+    document.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+    });
+
+    contextMenuRename.addEventListener('click', () => {
+        if (!contextMenuTarget) return;
+        renameItemModal.dataset.oldPath = contextMenuTarget;
+        renameModalInput.value = contextMenuTarget;
+        renameModalTitle.textContent = `Rename / Move ${contextMenuType === 'folder' ? 'Folder' : 'File'}`;
+        renameItemModal.style.display = 'flex';
+        renameModalInput.focus();
+    });
+
+    contextMenuDelete.addEventListener('click', () => {
+        if (!contextMenuTarget) return;
+        showDeleteConfirmationModal(contextMenuTarget, contextMenuType);
+    });
+
+    function hideRenameItemModal() {
+        renameItemModal.style.display = 'none';
+        renameModalInput.value = '';
+    }
+
+    renameModalCancelBtn.addEventListener('click', hideRenameItemModal);
+
+    renameModalConfirmBtn.addEventListener('click', () => {
+        const oldPath = renameItemModal.dataset.oldPath;
+        const newPath = renameModalInput.value.trim();
+
+        if (oldPath && newPath && oldPath !== newPath) {
+            renameItem(oldPath, newPath);
+            hideRenameItemModal();
+        }
+    });
+
+    renameModalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            renameModalConfirmBtn.click();
+        } else if (e.key === 'Escape') {
+            hideRenameItemModal();
         }
     });
 
