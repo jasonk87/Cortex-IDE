@@ -159,6 +159,16 @@ class Agent:
             formatted_memories = "\n".join([f"- {mem}" for mem in relevant_memories])
             memories_context = f"Here are some relevant memories from past tasks:\n{formatted_memories}"
 
+
+        # Manage context window by truncating conversation history if it's too long
+        max_history_items = 10
+        if len(self.conversation_history) > max_history_items:
+            # Keep the very first instruction and the last N interactions
+            truncated_history = [self.conversation_history[0]] + [{"role": "system", "content": "... [History truncated for brevity] ..."}] + self.conversation_history[-(max_history_items-2):]
+            history_str = json.dumps(truncated_history, indent=2)
+        else:
+            history_str = json.dumps(self.conversation_history, indent=2)
+
         planning_prompt = f"""
         You are an expert AI software developer. Your goal is to create a high-level, step-by-step plan to accomplish the user's objective. The plan should consist of logical steps, not tool calls. The execution of each step will be handled by a separate ReAct loop.
 
@@ -172,10 +182,7 @@ class Agent:
         {memories_context}
         ---
         **Full Conversation History:**
-        {json.dumps(self.conversation_history, indent=2)}
-        ---
-        **Project Code Map:**
-        {generate_code_map(self.project_path)}
+        {history_str}
         ---
         Begin your thinking process now. After you have reasoned through the plan, provide the JSON output.
         """
@@ -198,8 +205,6 @@ class Agent:
 
             self.log(f"ReAct Iteration {i+1}/{max_iterations} for objective: '{objective}'")
 
-            code_map = generate_code_map(self.project_path)
-
             react_prompt = f"""
             You are an autonomous agent executing a task. Your goal is to achieve the following objective: **{objective}**
 
@@ -212,9 +217,6 @@ class Agent:
 
             **Available Tools:**
             {self.tool_registry.get_tool_definitions()}
-
-            **Project Code Map:**
-            {code_map}
             ---
             Provide your reasoning and then the action to take.
             """
@@ -252,12 +254,21 @@ class Agent:
 
     def _summarize_and_save_memory(self):
         self.log("Reflecting on the completed task to create a memory...")
+
+        # Manage context window for summarization as well
+        max_history_items = 15
+        if len(self.conversation_history) > max_history_items:
+            truncated_history = [self.conversation_history[0]] + [{"role": "system", "content": "... [History truncated for brevity] ..."}] + self.conversation_history[-(max_history_items-2):]
+            history_str = json.dumps(truncated_history, indent=2)
+        else:
+            history_str = json.dumps(self.conversation_history, indent=2)
+
         summarization_prompt = f"""
         Based on the conversation, what is the most important lesson learned or accomplishment?
         Summarize it as a concise, single sentence for a future AI agent.
 
         CONVERSATION:
-        {json.dumps(self.conversation_history, indent=2)}
+        {history_str}
 
         Respond with only the single sentence summary.
         """

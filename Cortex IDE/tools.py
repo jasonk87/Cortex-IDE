@@ -298,18 +298,25 @@ def execute_python_file(project_path: str, filename: str, timeout: int = 10) -> 
         return f"Error executing file '{filename}': {e}"
 
 
-def list_files(project_path: str) -> str:
+def list_files(project_path: str, path: str = ".") -> str:
     try:
-        if not os.path.isdir(project_path):
-            return "Error: Project path is not a valid directory."
-        files = [
-            f
-            for f in os.listdir(project_path)
-            if os.path.isfile(os.path.join(project_path, f))
-        ]
-        if not files:
-            return "No files in the project directory."
-        return "\n".join(files)
+        target_path = get_safe_path(project_path, path)
+        if not os.path.isdir(target_path):
+            return f"Error: Path '{path}' is not a valid directory."
+
+        entries = os.listdir(target_path)
+        if not entries:
+            return "Directory is empty."
+
+        formatted_entries = []
+        for entry in sorted(entries):
+            full_path = os.path.join(target_path, entry)
+            if os.path.isdir(full_path):
+                formatted_entries.append(f"{entry}/")
+            else:
+                formatted_entries.append(entry)
+
+        return "\n".join(formatted_entries)
     except Exception as e:
         return f"Error listing files: {e}"
 
@@ -543,6 +550,61 @@ def format_file_tool(project_path: str, filename: str) -> str:
         return f"Error during format_file_tool for '{filename}': {str(e)}"
 
 
+
+def search_codebase(project_path: str, pattern: str) -> str:
+    """Searches for a string or regex pattern across the project files."""
+    try:
+        from pathlib import Path
+        import re
+        project_path_obj = Path(project_path).resolve()
+        if not project_path_obj.is_dir():
+            return "Error: The provided path is not a valid directory."
+
+        results = []
+        exclude_dirs = {
+            "__pycache__",
+            ".git",
+            ".idea",
+            "venv",
+            ".venv",
+            "env",
+            "node_modules",
+        }
+
+        for root, dirs, files in os.walk(project_path_obj, topdown=True):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            current_path = Path(root)
+
+            for file in files:
+                file_path = current_path / file
+                relative_path = file_path.relative_to(project_path_obj)
+
+                # Skip some common binary/non-text files
+                if file_path.suffix in {'.pyc', '.png', '.jpg', '.zip', '.tar', '.gz'}:
+                    continue
+
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        for line_num, line in enumerate(f, 1):
+                            if re.search(pattern, line):
+                                results.append(f"{relative_path}:{line_num}:{line.strip()}")
+                except (UnicodeDecodeError, Exception):
+                    # Skip files that can't be read as text
+                    pass
+
+        if not results:
+            return f"No matches found for pattern '{pattern}'."
+
+        # Limit the output size to prevent blowing up the context window
+        max_results = 50
+        if len(results) > max_results:
+            truncated_msg = f"\n... and {len(results) - max_results} more matches."
+            return "\n".join(results[:max_results]) + truncated_msg
+
+        return "\n".join(results)
+    except Exception as e:
+        return f"Error searching codebase: {e}"
+
 class ToolRegistry:
     """A registry to hold and manage the agent's tools."""
 
@@ -557,6 +619,7 @@ class ToolRegistry:
             "delete_file": delete_file,
             "find_line_numbers": find_line_numbers,
             "search_file_content": search_file_content,
+            "search_codebase": search_codebase,
             "read_code_chunk": read_code_chunk,
             "finish": finish,
             "generate_code_map": generate_code_map,
@@ -580,13 +643,14 @@ class ToolRegistry:
             "Your available tools are:\n"
             "- echo(message: str): Use to answer a question or provide a direct response to the user in the log.\n"
             "- save_file(filename: str, content: str): Create or overwrite a file.\n"
-            "- list_files(): List every file in the current project.\n"
+            "- list_files(path: str = '.'): List all files and directories in the given path.\n"
             "- read_file(filename: str): Return the full contents of a file.\n"
             "- execute_python_file(filename: str, timeout: int = 10): Run a Python script with a timeout (default 10s).\n"
             "- run_tests(): Runs the pytest test suite for the project and returns the results.\n"
             "- delete_file(filename: str): Delete a file.\n"
             "- find_line_numbers(filename: str, keyword: str): Find all line numbers where a keyword appears in one file.\n"
             "- search_file_content(keyword: str): Search every file for a keyword (case-insensitive).\n"
+            "- search_codebase(pattern: str): Search for a string or regex pattern across all files in the project.\n"
             "- search_and_replace(filename: str, search_query: str, replacement_text: str): Search for a string in a file and replace all occurrences.\n"
             "- insert_at_line(filename: str, line_number: int, content_to_insert: str): Insert a block of text into a file at a specific line number.\n"
             "- read_code_chunk(filename: str, start_line: int, line_count: int = 50): Return a chunk of code from a file.\n"
