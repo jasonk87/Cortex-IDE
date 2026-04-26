@@ -1,99 +1,172 @@
-/* static/css/style.css */
+/* static/css/style.css - Modern Sleek Theme */
 
 :root {
-    --bg-dark:    #1d1f21;
-    --bg-panel:   #282c34;
-    --text-main:  #c5c8c6;
-    --text-light: #d6deeb;
-    --border:     #3a3f4b;
-    --purple:     #c792ea;
-    --cyan:       #89ddff;
-    --green:      #c3e88d;
-    --red:        #ff5370;
-    --orange:     #f78c6c;
-    --blue:       #82aaff;
+    /* Modern Slate/Tailwind inspired dark theme */
+    --bg-dark:    #0f172a; /* Slate 900 */
+    --bg-panel:   #1e293b; /* Slate 800 */
+    --bg-lighter: #334155; /* Slate 700 */
+    --text-main:  #cbd5e1; /* Slate 300 */
+    --text-light: #f8fafc; /* Slate 50 */
+    --text-muted: #94a3b8; /* Slate 400 */
+    --border:     #334155; /* Slate 700 */
+
+    /* Vibrant Accents */
+    --purple:     #8b5cf6; /* Violet 500 */
+    --purple-hover:#7c3aed; /* Violet 600 */
+    --cyan:       #06b6d4; /* Cyan 500 */
+    --cyan-hover: #0891b2; /* Cyan 600 */
+    --green:      #10b981; /* Emerald 500 */
+    --red:        #ef4444; /* Red 500 */
+    --orange:     #f97316; /* Orange 500 */
+    --blue:       #3b82f6; /* Blue 500 */
+
+    /* Shadows & Effects */
+    --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --glow-cyan:  0 0 10px rgba(6, 182, 212, 0.5);
+
+    /* Border Radius */
+    --radius-sm:  6px;
+    --radius-md:  8px;
+    --radius-lg:  12px;
+}
+
+/* Custom Scrollbar for a sleeker look */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--bg-lighter);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
     margin: 0;
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: hidden;
 }
 
 h1 {
     text-align: center;
     color: var(--text-light);
-    margin: 10px 0;
-    font-weight: 400;
+    margin: 15px 0;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
+/* Base Form Inputs */
 .input-form {
     display: flex;
-    padding: 0 20px 15px 20px;
+    padding: 0 20px 20px 20px;
+    position: relative;
 }
 
 .input-form input {
     flex-grow: 1;
-    padding: 10px;
+    padding: 12px 16px;
     border: 1px solid var(--border);
     background-color: var(--bg-panel);
-    color: var(--text-main);
-    border-radius: 4px 0 0 4px;
+    color: var(--text-light);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
     font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.input-form input:focus {
+    outline: none;
+    border-color: var(--purple);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
 .input-form button {
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
     background-color: var(--purple);
     color: #fff;
     cursor: pointer;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
 }
 
-#task-form button {
+.input-form button:hover {
+    background-color: var(--purple-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.input-form button:active {
+    transform: translateY(0);
+}
+
+/* Chat Form Specific overrides */
+#chat-form button {
     background-color: var(--cyan);
-    color: var(--bg-dark);
+}
+#chat-form button:hover {
+    background-color: var(--cyan-hover);
 }
 
 #app-container {
     display: flex;
     flex-grow: 1;
-    gap: 15px;
+    gap: 20px;
     min-height: 0;
     padding: 0 20px 20px 20px;
+    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .panel {
     background-color: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.3s ease;
+    overflow: hidden; /* Keep rounded corners clean */
 }
 
-#file-tree-panel { flex: 0 0 250px; }
+.panel:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+#file-tree-panel { flex: 0 0 260px; }
 #main-panel { flex: 1 1 50%; min-width: 0; }
 #file-viewer-panel { flex: 1 1 50%; display: flex; flex-direction: column; }
 
 .panel-header {
-    padding: 10px 15px;
-    font-weight: bold;
+    padding: 12px 16px;
+    font-weight: 600;
     border-bottom: 1px solid var(--border);
+    background-color: rgba(0, 0, 0, 0.1);
     color: var(--text-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-size: 14px;
+    letter-spacing: 0.5px;
 }
 
 .panel-content {
-    padding: 15px;
+    padding: 16px;
     overflow-y: auto;
     flex-grow: 1;
 }
@@ -104,226 +177,6 @@ h1 {
     margin: 0;
 }
 
-#file-tree-list li a {
-    display: block;
-    padding: 8px 10px;
-    text-decoration: none;
-    color: var(--text-main);
-    border-radius: 3px;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#file-tree-list li a:hover,
-#file-tree-list li.active > a,
-#file-tree-list li > .directory-name:hover { /* Target the <a> inside an active <li> */
-    background-color: rgba(199, 146, 234, 0.2);
-}
-
-#editor-textarea {
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    resize: none;
-    background-color: var(--bg-panel);
-    color: var(--text-main);
-    border: none;
-    font-family: "SF Mono", "Fira Code", monospace;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.panel-content.editor-container {
-    position: relative; /* Needed for absolute positioning of children */
-    display: flex;
-    flex-direction: column;
-}
-
-.panel-header button {
-    color: var(--bg-dark);
-    padding: 5px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-left: 10px;
-    font-weight: bold;
-}
-
-#save-file-btn { background-color: var(--green); }
-#run-code-btn { background-color: var(--blue); }
-
-#create-file-form {
-    display: flex;
-    padding: 0 15px 15px;
-    margin-top:20px;
-}
-
-#create-file-form input {
-    flex-grow: 1;
-    min-width: 0;
-    padding: 6px;
-    font-size: 12px;
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    border: 1px solid var(--border);
-    border-radius: 3px 0 0 3px;
-}
-
-#create-file-form button {
-    padding: 6px 10px;
-    font-size: 12px;
-    background-color: var(--purple);
-    color: #fff;
-    border: none;
-    border-radius: 0 3px 3px 0;
-    cursor: pointer;
-}
-
-.log-output, .action-proposal {
-    background-color: var(--bg-dark);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 10px;
-    margin-top: 10px;
-    font-family: "SF Mono", "Fira Code", monospace;
-}
-
-.log-output-header, .action-proposal-header {
-    font-weight: bold;
-    color: var(--cyan);
-}
-.log-output-stderr { color: var(--red); }
-.agent-log-msg { color: var(--base00); font-style: italic; }
-.stream-container, .terminal-output {
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-
-#main-panel .panel-content { /* Target the log panel's content area specifically */
-    overflow-y: auto;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column; /* This is the key for top-to-bottom layout */
-}
-
-.terminal-output { padding: 15px; padding-top: 0; }
-
-.CodeMirror {
-    height: 100%;
-    font-size: 14px;
-    line-height: 1.6;
-    font-family: "SF Mono", "Fira Code", monospace;
-    flex-grow: 1;
-}
-
-/* --- UX/UI Enhancements --- */
-
-/* Add position: relative to the form to act as a container */
-.input-form {
-    position: relative;
-}
-
-/* Style for the 'Stop' button state */
-.btn-stop {
-    background-color: var(--red) !important;
-    color: white !important;
-}
-
-/* Gray out the input field when the agent is running */
-.input-form.running input {
-    background-color: #3a3f4b;
-}
-
-/* Create a pseudo-element for the animated glow.
-  This element is positioned precisely over the input/button combo,
-  ignoring the parent's padding for a tight, clean look.
-*/
-.input-form.running::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    /* Inset the pseudo-element to match the form's padding */
-    left: 20px;
-    right: 20px;
-    /* Adjust bottom to account for the input/button height and bottom padding */
-    bottom: 15px; 
-    border-radius: 4px;
-    pointer-events: none; /* The overlay should not be clickable */
-    animation: running-glow 2s infinite;
-}
-
-/* Keyframe animation for the glowing border/shadow effect */
-@keyframes running-glow {
-    0% {
-        box-shadow: 0 0 3px var(--cyan);
-    }
-    50% {
-        box-shadow: 0 0 10px var(--cyan), 0 0 12px var(--cyan);
-    }
-    100% {
-        box-shadow: 0 0 3px var(--cyan);
-    }
-}
-
-.btn-clear {
-    background-color: var(--green) !important;
-    color: var(--bg-dark) !important;
-}
-
-/* Ensure terminal takes up the full space of its container */
-.panel-content .terminal-output {
-    height: 100%;
-    box-sizing: border-box;
-    flex-grow: 1;
-}
-
-/* --- Delete File UI --- */
-
-/* Make file list items a container for positioning the delete button */
-#file-tree-list li {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-/* Style the file link to not overlap the button */
-#file-tree-list li a {
-    flex-grow: 1;
-}
-
-/* Style for the new delete button */
-.delete-file-btn {
-    display: none; /* Hidden by default */
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--text-main);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: bold;
-}
-
-/* Show the delete button when hovering over the list item */
-#file-tree-list li:hover .delete-file-btn {
-    display: block;
-}
-
-/* Make the delete button red on its own hover */
-.delete-file-btn:hover {
-    background-color: var(--red);
-    color: white;
-}
-
-/* --- Hierarchical File Tree Styles (Corrected) --- */
-
-/* 1. Remove all padding/margin from ULs. They are just structural containers now. */
 #file-tree-list ul {
     list-style-type: none;
     padding-left: 0;
@@ -331,29 +184,27 @@ h1 {
     width: 100%;
 }
 
-/* 2. Use a border and margin to create visual indentation for nested lists */
 #file-tree-list ul ul {
-    margin-left: 12px;
-    padding-left: 12px;
-    border-left: 1px solid var(--border);
+    margin-left: 14px;
+    padding-left: 14px;
+    border-left: 1px dashed var(--border);
 }
 
-/* 3. Define the main layout for ALL list items (files and folders) */
 #file-tree-list li {
-    display: flex; /* Use Flexbox for robust alignment */
+    display: flex;
     align-items: center;
-    padding: 2px 0; /* Add a little vertical breathing room */
+    padding: 3px 0;
 }
 
-/* 4. Style the clickable names for both files and directories */
 #file-tree-list li > a,
 #file-tree-list li > .directory-name {
-    flex-grow: 1; /* This is KEY: makes the name take all available space */
-    padding: 4px 5px;
-    border-radius: 3px;
+    flex-grow: 1;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: all 0.2s ease;
 }
 
 #file-tree-list li > a {
@@ -362,459 +213,332 @@ h1 {
 }
 
 #file-tree-list li > .directory-name {
-    font-weight: bold;
+    font-weight: 500;
     cursor: pointer;
     color: var(--cyan);
     position: relative;
-    padding-left: 18px; /* Make space for the icon */
-}
-
-/* 5. Style the expand/collapse icon for directories */
-.directory > .directory-name::before {
-    content: '▸'; /* Collapsed icon */
-    position: absolute;
-    left: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    transition: transform 0.1s ease-in-out;
-}
-
-.directory.expanded > .directory-name::before {
-    transform: translateY(-50%) rotate(90deg); /* Expanded icon */
-}
-
-/* 6. Fix the delete buttons. They are now flex items. */
-.delete-file-btn,
-.delete-folder-btn {
-    display: none; /* Hide by default */
-    background: none;
-    border: none;
-    color: var(--text-main);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: bold;
-    flex-shrink: 0; /* Prevent the button from shrinking */
-    margin-left: 5px; /* Space between name and button */
-}
-
-/* 7. Show the buttons on hover of the entire list item */
-#file-tree-list li:hover > .delete-file-btn,
-#file-tree-list li:hover > .delete-folder-btn {
-    display: block;
-}
-
-.delete-file-btn:hover,
-.delete-folder-btn:hover {
-    background-color: var(--red);
-    color: white;
-}
-
-/* 8. Style for the active file */
-#file-tree-list li.active > a {
-    background-color: rgba(199, 146, 234, 0.2);
-}
-
-/* Style for new folder form */
-#create-folder-form {
-    display: flex;
-    padding: 0 15px 15px;
-    margin-top: -5px; /* Reduce space between the two forms */
-}
-
-#create-folder-form input {
-    flex-grow: 1; min-width: 0; padding: 6px; font-size: 12px;
-    background-color: var(--bg-dark); color: var(--text-main);
-    border: 1px solid var(--border); border-radius: 3px 0 0 3px;
-}
-
-#create-folder-form button {
-    padding: 6px 10px; font-size: 12px; background-color: var(--cyan);
-    color: var(--bg-dark); border: none; border-radius: 0 3px 3px 0;
-    cursor: pointer; font-weight: bold;
-}
-
-/* Position delete button on directories */
-.directory {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap; /* Allows children UL to wrap to next line */
-}
-
-.directory > .directory-name {
-    flex-grow: 1; /* Allows name to take up space */
-}
-
-.delete-folder-btn {
-    display: none; /* Hidden by default */
-    background: none; border: none; color: var(--text-main);
-    cursor: pointer; font-size: 16px; padding: 0 8px;
-    border-radius: 3px; font-weight: bold;
-    margin-left: auto; /* Pushes button to the right */
-}
-
-li.directory:hover > .delete-folder-btn {
-    display: block;
-}
-
-.delete-folder-btn:hover {
-    background-color: var(--red);
-    color: white;
-}
-
-/* --- Agent Plan Styles --- */
-.plan-container {
-    background-color: rgba(137, 221, 255, 0.1); /* Light cyan background */
-    border-left: 3px solid var(--cyan);
-    padding: 10px 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-
-.plan-container h4 {
-    margin: 0 0 10px 0;
-    color: var(--cyan);
-    font-weight: bold;
-}
-
-.plan-container ol {
-    margin: 0;
     padding-left: 20px;
 }
 
-.plan-container li {
-    padding-bottom: 5px;
+.directory > .directory-name::before {
+    content: '▸';
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 12px;
 }
 
-/* --- Transitions & Animations --- */
-body, .panel, .input-form input, .input-form button, .panel-header button, #file-tree-list li a, .icon-btn, .modal-content {
-    transition: all 0.2s ease-in-out;
+.directory.expanded > .directory-name::before {
+    transform: translateY(-50%) rotate(90deg);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+#file-tree-list li > a:hover,
+#file-tree-list li.active > a,
+#file-tree-list li > .directory-name:hover {
+    background-color: rgba(139, 92, 246, 0.15); /* Subtle purple hover */
+    color: var(--text-light);
 }
 
-#app-container {
-    animation: fadeIn 0.5s ease-in-out;
+#editor-textarea {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    resize: none;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 10px;
+}
+
+.panel-content.editor-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 0; /* Let CodeMirror fill */
+}
+
+/* Standard Buttons inside headers */
+.panel-header button {
+    color: white;
+    padding: 6px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.panel-header button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    opacity: 0.9;
+}
+.panel-header button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+#save-file-btn { background-color: var(--green); }
+#run-code-btn { background-color: var(--blue); }
+#format-code-btn { background-color: var(--bg-lighter); color: var(--text-light); border: 1px solid var(--border); }
+#format-code-btn:hover { background-color: var(--border); }
+
+
+.action-button {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    background-color: var(--bg-lighter);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.action-button:hover {
+    background-color: var(--border);
 }
 
 
-/* --- NEW: Professional Log Entry Styles --- */
+/* New Item Forms */
+#create-file-form, #create-folder-form {
+    display: flex;
+    padding: 0 16px 16px;
+}
+#create-file-form { margin-top: 20px; }
+#create-folder-form { margin-top: -5px; }
+
+#create-file-form input, #create-folder-form input {
+    flex-grow: 1; min-width: 0; padding: 8px 12px; font-size: 13px;
+    background-color: var(--bg-dark); color: var(--text-light);
+    border: 1px solid var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    transition: border-color 0.2s;
+}
+#create-file-form input:focus, #create-folder-form input:focus {
+    outline: none; border-color: var(--purple);
+}
+
+#create-file-form button, #create-folder-form button {
+    padding: 8px 12px; font-size: 13px; font-weight: 600;
+    border: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    cursor: pointer; transition: all 0.2s ease;
+}
+
+#create-file-form button { background-color: var(--purple); color: white; }
+#create-file-form button:hover { background-color: var(--purple-hover); }
+
+#create-folder-form button { background-color: var(--cyan); color: white; }
+#create-folder-form button:hover { background-color: var(--cyan-hover); }
+
+/* Logs */
+#main-panel .panel-content {
+    overflow-y: auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
 .log-entry {
     border-bottom: 1px solid var(--border);
-    font-family: "SF Mono", "Fira Code", monospace;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
     font-size: 13px;
+    background-color: var(--bg-panel);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 }
 
 .log-header {
     display: flex;
     align-items: center;
-    padding: 8px 15px;
+    padding: 10px 14px;
     cursor: default;
+    background-color: rgba(255, 255, 255, 0.02);
 }
 
-.log-header.collapsible {
-    cursor: pointer;
-}
-.log-header.collapsible:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
+.log-header.collapsible { cursor: pointer; }
+.log-header.collapsible:hover { background-color: rgba(255, 255, 255, 0.05); }
 
-.log-caret {
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    text-align: center;
-}
-
+.log-caret { width: 16px; height: 16px; margin-right: 8px; text-align: center; }
 .log-header.collapsible .log-caret::before {
-    content: '▸';
-    display: inline-block;
-    transition: transform 0.1s ease-in-out;
+    content: '▸'; display: inline-block; transition: transform 0.2s ease; color: var(--text-muted);
 }
-
-.log-entry.expanded > .log-header .log-caret::before {
-    transform: rotate(90deg);
-}
+.log-entry.expanded > .log-header .log-caret::before { transform: rotate(90deg); }
 
 .log-body {
-    display: none; /* Collapsed by default */
-    padding: 0 15px 10px 39px; /* Align with title text */
-    background-color: rgba(0,0,0,0.2);
+    display: none;
+    padding: 10px 14px;
+    background-color: rgba(0,0,0,0.15);
     border-top: 1px solid var(--border);
 }
 
-.log-entry.expanded > .log-body {
-    display: block;
+.log-entry.expanded > .log-body { display: block; animation: slideDown 0.3s ease-out; }
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .log-body pre {
-    margin: 0;
-    padding: 10px;
-    background-color: var(--bg-dark);
-    border-radius: 4px;
-    white-space: pre-wrap;
-    overflow-x: auto;
-    word-break: normal;
-    font-size: 12px;
+    margin: 0; padding: 12px;
+    background-color: var(--bg-dark); border-radius: var(--radius-sm);
+    white-space: pre-wrap; overflow-x: auto; font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* --- Entry Type Specific Styles --- */
-.log-entry.type-plan .log-title { color: var(--purple); font-weight: bold; }
+.log-entry.type-plan .log-title { color: var(--purple); font-weight: 600; }
 .log-entry.type-thought .log-title { color: var(--orange); font-style: italic; }
-.log-entry.type-action .log-title { color: var(--cyan); }
-.log-entry.type-success .log-title { color: var(--green); }
-.log-entry.type-error .log-title { color: var(--red); }
+.log-entry.type-action .log-title { color: var(--cyan); font-weight: 500;}
+.log-entry.type-success .log-title { color: var(--green); font-weight: 500;}
+.log-entry.type-error .log-title { color: var(--red); font-weight: 600; }
 
-.log-entry.type-plan .log-body ol {
-    margin: 0;
-    padding-left: 20px;
+/* Terminal Output */
+.terminal-output {
+    height: 100%; box-sizing: border-box; flex-grow: 1;
+    background-color: var(--bg-dark); color: var(--text-main);
+    padding: 15px; margin: 0; font-family: "JetBrains Mono", monospace; font-size: 13px;
+    overflow-y: auto;
+}
+
+.CodeMirror {
+    height: 100%; font-size: 14px; line-height: 1.6;
+    font-family: "JetBrains Mono", "Fira Code", "SF Mono", monospace; flex-grow: 1;
+    /* Use a dark theme slightly lighter than bg-dark */
+    background-color: #1e293b !important;
+}
+
+/* Animations */
+.input-form.running::after {
+    content: ''; position: absolute;
+    top: 0; left: 20px; right: 20px; bottom: 20px;
+    border-radius: var(--radius-md); pointer-events: none;
+    animation: running-glow 2.5s ease-in-out infinite;
+}
+.input-form.running input { background-color: var(--bg-lighter); color: var(--text-muted); }
+.btn-stop { background-color: var(--red) !important; color: white !important; }
+
+@keyframes running-glow {
+    0% { box-shadow: 0 0 0px var(--cyan); }
+    50% { box-shadow: var(--glow-cyan), 0 0 15px var(--cyan); }
+    100% { box-shadow: 0 0 0px var(--cyan); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Delete / Action Buttons */
+.delete-file-btn, .delete-folder-btn {
+    display: none; background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: var(--radius-sm);
+    flex-shrink: 0; margin-left: 5px; transition: all 0.2s ease;
+}
+
+#file-tree-list li:hover > .delete-file-btn, #file-tree-list li:hover > .delete-folder-btn { display: block; }
+.delete-file-btn:hover, .delete-folder-btn:hover { background-color: var(--red); color: white; }
+.directory { display: flex; align-items: center; flex-wrap: wrap; }
+.delete-folder-btn { margin-left: auto; }
+
+/* Header Icons */
+.header-icons { display: flex; gap: 8px; align-items: center; }
+.icon-btn {
+    background-color: rgba(255,255,255,0.05); border: 1px solid transparent;
+    color: var(--text-muted); padding: 6px; border-radius: var(--radius-sm);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+}
+.icon-btn:hover {
+    background-color: rgba(139, 92, 246, 0.2); color: var(--purple); border-color: var(--purple);
 }
 
 #download-project-btn {
-    background-color: var(--green);
-    color: var(--bg-dark);
-    border: none;
-    border-radius: 4px;
-    padding: 2px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-left: auto; /* Pushes it to the right */
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 16px; font-weight: bold; transition: color 0.2s; padding: 0 5px;
 }
+#download-project-btn:hover { color: var(--green); }
 
-#download-project-btn:hover {
-    opacity: 0.8;
-}
-
-/* --- New File/Folder UI Styles --- */
-.header-icons {
-    display: flex;
-    gap: 5px;
-}
-
-.icon-btn {
-    background-color: var(--bg-dark); /* Darker background to stand out */
-    border: 1px solid var(--border);
-    color: var(--text-light); /* Lighter text for better contrast */
-    font-size: 12px;
-    padding: 4px 10px; /* Increased padding */
-    border-radius: 4px; /* Slightly more rounded corners */
-    cursor: pointer;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    transition: background-color 0.2s, border-color 0.2s; /* Smooth transition */
-}
-
-.icon-btn {
-    padding: 5px 8px; /* Adjusted padding */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.icon-btn svg {
-    transition: fill 0.2s ease-in-out;
-}
-
-.icon-btn:hover {
-    background-color: var(--purple);
-    color: white;
-    border-color: var(--purple);
-}
-
-/* --- Modals (Create and Confirm) --- */
+/* Modals */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center; z-index: 1000;
+    animation: fadeInModal 0.2s ease-out;
 }
+@keyframes fadeInModal { from{opacity:0;} to{opacity:1;}}
 
 .modal-content {
-    background-color: var(--bg-panel);
-    padding: 25px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    background-color: var(--bg-panel); padding: 30px; border-radius: var(--radius-lg);
+    border: 1px solid var(--border); text-align: center; box-shadow: var(--shadow-lg);
+    width: 100%; max-width: 400px;
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes scaleIn { from{transform:scale(0.95);opacity:0;} to{transform:scale(1);opacity:1;}}
 
-.modal-content h3 {
-    margin: 0 0 15px 0;
-    font-weight: 500;
-    color: var(--text-light);
-}
-
-.modal-content p {
-    margin: 0 0 20px 0;
-    font-size: 16px;
-    color: var(--text-light);
-}
+.modal-content h3 { margin: 0 0 15px 0; font-weight: 600; color: var(--text-light); }
+.modal-content p { margin: 0 0 20px 0; color: var(--text-muted); }
 
 .modal-input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    border-radius: 4px;
-    font-size: 14px;
-    box-sizing: border-box;
+    width: 100%; padding: 12px; margin-bottom: 25px; border: 1px solid var(--border);
+    background-color: var(--bg-dark); color: var(--text-light); border-radius: var(--radius-sm);
+    font-size: 14px; box-sizing: border-box; transition: all 0.2s ease;
 }
+.modal-input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2); }
 
-.modal-input:focus {
-    outline: none;
-    border-color: var(--purple);
-    box-shadow: 0 0 5px rgba(199, 146, 234, 0.5);
-}
-
-.modal-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
+.modal-buttons { display: flex; justify-content: center; gap: 15px; }
 .modal-btn {
-    padding: 10px 20px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    background-color: var(--bg-dark);
-    color: var(--text-light);
-    transition: background-color 0.2s, border-color 0.2s;
+    padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    background-color: var(--bg-lighter); color: var(--text-light); transition: all 0.2s ease;
 }
+.modal-btn:hover { background-color: var(--border); }
+.modal-btn-primary { background-color: var(--purple); color: white; border-color: var(--purple); }
+.modal-btn-primary:hover { background-color: var(--purple-hover); border-color: var(--purple-hover); }
+.modal-btn-danger { background-color: var(--red); color: white; border-color: var(--red); }
+.modal-btn-danger:hover { background-color: #dc2626; border-color: #dc2626; }
 
-.modal-btn-primary {
-    background-color: var(--purple);
-    color: white;
-    border-color: var(--purple);
-}
-
-.modal-btn-primary:hover {
-    opacity: 0.9;
-    border-color: var(--purple);
-}
-
-.modal-btn-danger {
-    background-color: var(--red);
-    color: white;
-    border-color: var(--red);
-}
-
-.modal-btn:hover {
-    opacity: 0.9;
-    border-color: var(--text-main);
-}
-
-.modal-btn-danger:hover {
-    border-color: var(--text-light);
-}
-
-/* --- Agent Spinner --- */
-#chat-button-container {
-    display: flex;
-    align-items: center;
-}
-
-#chat-button-container button {
-    border-radius: 0 4px 4px 0; /* Keep radius on the button */
-}
-
-.spinner {
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: var(--cyan);
-    animation: spin 1s ease-in-out infinite;
-    margin-right: -40px; /* Pull it over the button */
-    z-index: 5;
-    position: relative;
-    pointer-events: none; /* Make it non-interactive */
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* --- Button States --- */
-
-/* Base state for buttons that will have icons/spinners */
-#save-file-btn, #run-code-btn {
-    position: relative;
-    overflow: hidden;
-}
-
-/* Styling for the text inside the button, to allow for transitions */
-.btn-text {
-    transition: opacity 0.2s ease-in-out;
-}
-
-/* Saving state with a spinner */
-.btn-saving::before, .btn-running::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 10px;
-    width: 16px;
-    height: 16px;
-    margin-top: -8px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-.btn-saving .btn-text, .btn-running .btn-text {
-    opacity: 0; /* Hide original text */
-}
-
-/* Success and Error states */
-.btn-success {
-    background-color: var(--green) !important;
-    color: var(--bg-dark) !important;
-}
-
-.btn-error {
-    background-color: var(--red) !important;
-    color: white !important;
-}
-/* --- Context Menu --- */
+/* Context Menu */
 #context-menu {
-    position: absolute;
-    z-index: 1000;
-    width: 150px;
-    background: var(--bg-lighter);
-    border-radius: 5px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    padding: 5px 0;
-    display: none;
-    flex-direction: column;
+    position: absolute; z-index: 1000; width: 160px; background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
+    padding: 6px 0; display: none; flex-direction: column; overflow: hidden;
 }
-
 #context-menu button {
-    background: none;
-    border: none;
-    color: var(--text-light);
-    padding: 10px 15px;
-    text-align: left;
-    width: 100%;
-    cursor: pointer;
-    font-size: 14px;
+    background: none; border: none; color: var(--text-main); padding: 10px 16px;
+    text-align: left; width: 100%; cursor: pointer; font-size: 13px; transition: background 0.1s;
 }
+#context-menu button:hover { background-color: var(--bg-lighter); color: var(--text-light); }
+#context-menu-delete:hover { background-color: rgba(239, 68, 68, 0.1) !important; color: var(--red) !important; }
 
-#context-menu button:hover {
-    background-color: var(--bg-dark);
+/* Spinners */
+.spinner {
+    width: 20px; height: 20px; border: 3px solid rgba(255, 255, 255, 0.2); border-radius: 50%;
+    border-top-color: var(--cyan); animation: spin 0.8s ease-in-out infinite;
+    margin-right: -35px; z-index: 5; position: relative; pointer-events: none;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Button States */
+#save-file-btn, #run-code-btn { position: relative; overflow: hidden; }
+.btn-text { transition: opacity 0.2s ease; }
+.btn-saving::before, .btn-running::before {
+    content: ''; position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
+    margin-top: -9px; margin-left: -9px; border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.btn-saving .btn-text, .btn-running .btn-text { opacity: 0; }
+.btn-success { background-color: var(--green) !important; color: white !important; }
+.btn-error { background-color: var(--red) !important; color: white !important; }
