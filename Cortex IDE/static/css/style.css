@@ -1,21 +1,25 @@
 /* static/css/style.css */
 
 :root {
-    --bg-dark:    #1d1f21;
-    --bg-panel:   #282c34;
-    --text-main:  #c5c8c6;
-    --text-light: #d6deeb;
-    --border:     #3a3f4b;
-    --purple:     #c792ea;
-    --cyan:       #89ddff;
-    --green:      #c3e88d;
-    --red:        #ff5370;
-    --orange:     #f78c6c;
-    --blue:       #82aaff;
+    --bg-dark:    #0f172a;
+    --bg-panel:   #1e293b;
+    --bg-lighter: #334155;
+    --text-main:  #94a3b8;
+    --text-light: #f8fafc;
+    --border:     #334155;
+    --purple:     #a855f7;
+    --cyan:       #38bdf8;
+    --green:      #4ade80;
+    --red:        #f43f5e;
+    --orange:     #fb923c;
+    --blue:       #3b82f6;
+    --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
     margin: 0;
@@ -248,7 +252,7 @@ h1 {
     left: 20px;
     right: 20px;
     /* Adjust bottom to account for the input/button height and bottom padding */
-    bottom: 15px; 
+    bottom: 15px;
     border-radius: 4px;
     pointer-events: none; /* The overlay should not be clickable */
     animation: running-glow 2s infinite;
@@ -604,7 +608,7 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     padding: 4px 10px; /* Increased padding */
     border-radius: 4px; /* Slightly more rounded corners */
     cursor: pointer;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     transition: background-color 0.2s, border-color 0.2s; /* Smooth transition */
 }
 
@@ -623,6 +627,8 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     background-color: var(--purple);
     color: white;
     border-color: var(--purple);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 /* --- Modals (Create and Confirm) --- */
@@ -637,15 +643,17 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
 }
 
 .modal-content {
     background-color: var(--bg-panel);
     padding: 25px;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-lg);
+    animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-content h3 {
@@ -790,4 +798,36 @@ body, .panel, .input-form input, .input-form button, .panel-header button, #file
 .btn-error {
     background-color: var(--red) !important;
     color: white !important;
+}
+/* --- Context Menu --- */
+#context-menu {
+    position: absolute;
+    z-index: 1000;
+    width: 150px;
+    background: var(--bg-lighter);
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    padding: 5px 0;
+    display: none;
+    flex-direction: column;
+}
+
+#context-menu button {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    padding: 10px 15px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#context-menu button:hover {
+    background-color: var(--bg-dark);
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }

@@ -51,19 +51,23 @@ def get_safe_path(project_path, filename):
     if not project_path:
         raise Exception("No active project selected")
 
-    safe_filename = secure_filename(filename)
-    if not safe_filename:
-        if Path(filename).is_absolute() or ".." in Path(filename).parts:
-            raise Exception("Invalid or potentially unsafe filename provided")
-        safe_filename = filename
+    # Avoid secure_filename flattening out slashes
+    import posixpath
+    normalized_rel = posixpath.normpath(filename.replace(chr(92), "/"))
 
-    file_path = os.path.join(project_path, safe_filename)
+    if normalized_rel.startswith("../") or normalized_rel == "..":
+        raise Exception("Invalid or potentially unsafe filename provided")
+
+    file_path = os.path.join(project_path, normalized_rel)
     normalized_path = os.path.normpath(file_path)
 
     if not normalized_path.startswith(os.path.normpath(project_path)):
         raise PermissionError(
             "Access denied: File path is outside of the project directory."
         )
+
+    # Ensure parent directories exist
+    os.makedirs(os.path.dirname(normalized_path), exist_ok=True)
 
     return normalized_path
 

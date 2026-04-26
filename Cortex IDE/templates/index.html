@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cortex IDE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -23,7 +24,7 @@
         <input type="text" id="project-name-input" placeholder="Enter new project name..." required autocomplete="off">
         <button type="submit">Start New Project</button>
     </form>
-    
+
     <form id="chat-form" class="input-form" style="display: none;">
         <input type="text" id="chat-input" placeholder="Send a message to the agent..." required autocomplete="off">
         <div id="chat-button-container">
@@ -98,6 +99,26 @@
                 <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
             </div>
         </div>
+    </div>
+
+
+    <!-- Rename/Move Modal -->
+    <div id="rename-item-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 id="rename-modal-title">Rename / Move</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Enter the new relative path for this item (e.g., 'src/main.py' or 'utils/').</p>
+            <input type="text" id="rename-modal-input" class="modal-input" placeholder="Enter new path..." autocomplete="off">
+            <div class="modal-buttons">
+                <button id="rename-modal-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="rename-modal-confirm-btn" class="modal-btn modal-btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu">
+        <button id="context-menu-rename">Rename / Move</button>
+        <button id="context-menu-delete" style="color: var(--red);">Delete</button>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
