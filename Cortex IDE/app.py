@@ -1,5 +1,11 @@
 # app.py (Updated for UX/UI)
 import os
+import pty
+import select
+import threading
+import fcntl
+import termios
+import struct
 import uuid
 import subprocess
 import signal
@@ -27,6 +33,7 @@ if not os.path.exists(PROJECTS_BASE_DIR):
 
 # --- Agent Management ---
 active_agents = {} # Key: project_path, not SID
+pty_fds = {} # Key: project_path
 
 def agent_runner(sid, project_path, objective):
     """Wrapper to run agent and ensure cleanup."""
@@ -123,6 +130,98 @@ def index():
 def handle_connect():
     session['sid'] = request.sid
     print(f"Client connected: {request.sid}. SID stored in session.")
+
+
+def pty_reader_thread(fd, project_path):
+    """Reads output from the PTY and sends it to the frontend via SocketIO."""
+    try:
+        while True:
+            # select blocks until there is data to read
+            r, _, _ = select.select([fd], [], [], 0.1)
+            if r:
+                data = os.read(fd, 1024)
+                if not data:
+                    break
+                socketio.emit('terminal_output', {'output': data.decode('utf-8', errors='replace')}, room=project_path)
+    except OSError:
+        pass # PTY closed
+    finally:
+        socketio.emit('terminal_output', {'output': '\r\n[Process Exited]\r\n'}, room=project_path)
+        if project_path in pty_fds:
+            del pty_fds[project_path]
+
+@socketio.on('start_terminal')
+def handle_start_terminal(data):
+    project_path = session.get('project_path')
+    if not project_path:
+        return
+
+    # If there's an existing terminal for this project, close it
+    if project_path in pty_fds:
+        try:
+            os.close(pty_fds[project_path])
+        except OSError:
+            pass
+
+    cols = data.get('cols', 80)
+    rows = data.get('rows', 24)
+
+    # Use bash as the default shell
+    shell = '/bin/bash'
+
+    # Fork a new PTY process
+    pid, fd = pty.fork()
+
+    if pid == 0:
+        # Child process: set working directory and run shell
+        os.chdir(project_path)
+
+        # Set terminal size
+        winsize = struct.pack("HHHH", rows, cols, 0, 0)
+        fcntl.ioctl(0, termios.TIOCSWINSZ, winsize)
+
+        # Setup environment variables
+        env = os.environ.copy()
+        env['TERM'] = 'xterm-256color'
+
+        os.execvpe(shell, [shell], env)
+    else:
+        # Parent process: store fd and start reader thread
+        pty_fds[project_path] = fd
+        thread = threading.Thread(target=pty_reader_thread, args=(fd, project_path))
+        thread.daemon = True
+        thread.start()
+        print(f"Started PTY for {project_path}")
+
+@socketio.on('terminal_input')
+def handle_terminal_input(data):
+    project_path = session.get('project_path')
+    if not project_path:
+        return
+
+    fd = pty_fds.get(project_path)
+    if fd:
+        try:
+            input_data = data.get('input', '')
+            os.write(fd, input_data.encode('utf-8'))
+        except OSError:
+            pass # PTY likely closed
+
+@socketio.on('resize_terminal')
+def handle_resize_terminal(data):
+    project_path = session.get('project_path')
+    if not project_path:
+        return
+
+    fd = pty_fds.get(project_path)
+    if fd:
+        try:
+            cols = data.get('cols', 80)
+            rows = data.get('rows', 24)
+            winsize = struct.pack("HHHH", rows, cols, 0, 0)
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+        except OSError:
+            pass
 
 @app.route('/api/start_project', methods=['POST'])
 def start_project():

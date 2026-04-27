@@ -28,6 +28,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const addFileBtn = document.getElementById('add-file-btn');
     const addFolderBtn = document.getElementById('add-folder-btn');
 
+    // Xterm.js initialization
+    const terminalContainer = document.getElementById('terminal-container');
+    window.term = new Terminal({
+        cursorBlink: true,
+        theme: {
+            background: '#0f172a', // Match our new dark theme
+            foreground: '#cbd5e1',
+            cursor: '#8b5cf6'
+        },
+        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        fontSize: 13
+    });
+    const fitAddon = new FitAddon.FitAddon();
+    window.term.loadAddon(fitAddon);
+    window.term.open(terminalContainer);
+    fitAddon.fit();
+
+    // Resize terminal when window resizes
+    window.addEventListener('resize', () => {
+        if (terminalContainer.style.display !== 'none') {
+            fitAddon.fit();
+            if (window.socket && window.socket.connected) {
+                window.socket.emit('resize_terminal', { cols: window.term.cols, rows: window.term.rows });
+            }
+        }
+    });
+
+
     // Context Menu & Rename Modal
     const contextMenu = document.getElementById('context-menu');
     const contextMenuRename = document.getElementById('context-menu-rename');
@@ -116,41 +144,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function executeCode() {
-        const code = codeMirrorEditor.getValue();
-        if (!code) {
-            addLog('Editor is empty. Nothing to run.', false, 'var(--red)');
+        if (!currentOpenFile) {
+            addLog('No file is currently open to run.', false, 'var(--red)');
             return;
         }
 
-        codeRunnerState = 'running';
-        codeMirrorEditor.getWrapperElement().style.display = 'none';
-        terminalOutput.textContent = ''; // Clear previous output
-        terminalOutput.style.display = 'block';
+        // Must save the file first before running it
+        await saveFile(currentOpenFile, codeMirrorEditor.getValue(), false);
 
-        runCodeBtn.disabled = true;
-        runCodeBtn.classList.add('btn-running');
-        runCodeBtn.innerHTML = '<span class="btn-text">Running...</span>';
+        codeRunnerState = 'finished';
+        codeMirrorEditor.getWrapperElement().style.display = 'none';
+        terminalContainer.style.display = 'block';
+        fitAddon.fit(); // Fit the terminal to the container now that it's visible
+
+        // Notify backend of terminal size in case it changed while hidden
+        if (window.socket && window.socket.connected) {
+            window.socket.emit('resize_terminal', { cols: window.term.cols, rows: window.term.rows });
+        }
+
+        runCodeBtn.classList.remove('btn-running');
+        runCodeBtn.classList.add('btn-clear');
+        runCodeBtn.innerHTML = '<span class="btn-text">Clear</span>';
 
         saveFileBtn.style.display = 'none';
 
-        try {
-            const response = await fetch('/api/execute_code', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ code: code, language: 'python' })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || `HTTP Error ${response.status}`);
-            addExecutionResult(result, "Manual");
-        } catch (error) {
-            addLog(`Error during execution: ${error.message}`, false, 'var(--red)');
-            terminalOutput.textContent = `Error during execution:\n${error.message}`;
-        } finally {
-            codeRunnerState = 'finished';
-            runCodeBtn.disabled = false;
-            runCodeBtn.classList.remove('btn-running');
-            runCodeBtn.classList.add('btn-clear');
-            runCodeBtn.innerHTML = '<span class="btn-text">Clear</span>';
+        // Type the run command into the interactive terminal
+        // Check if we are running python or executing a shell script
+        if (currentOpenFile.endsWith('.py')) {
+            window.socket.emit('terminal_input', { input: `python3 "${currentOpenFile}"
+` });
+        } else if (currentOpenFile.endsWith('.sh')) {
+            window.socket.emit('terminal_input', { input: `bash "${currentOpenFile}"
+` });
+        } else {
+            window.term.write(`
+[Cannot execute this file type automatically. Run it manually.]
+$ `);
         }
     }
 
@@ -247,8 +276,27 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('[Socket] connected:', window.socket.id);
             window.socket.emit('join_project_room', { project_path: projectPath });
 
+            if (window.term) {
+                window.socket.emit('start_terminal', { cols: window.term.cols, rows: window.term.rows });
+            }
+
             setupSocketListeners();
         });
+
+        window.socket.on('terminal_output', (data) => {
+            if (window.term) {
+                window.term.write(data.output);
+            }
+        });
+
+        // Send user keystrokes to the backend
+        if (window.term) {
+            window.term.onData(data => {
+                if (window.socket && window.socket.connected) {
+                    window.socket.emit('terminal_input', { input: data });
+                }
+            });
+        }
 
         window.socket.on('file_system_updated', (data) => {
             console.log(`File system update received for: ${data.filename}`);
